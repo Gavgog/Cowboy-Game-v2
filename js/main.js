@@ -10,7 +10,7 @@ const gameComplexity = 10;
 const xDiff = 400;
 const yDiff = 300;
 
-const cameraMode = "Player";
+let cameraMode = "Player";
 
 let camera = {xPos:xDiff,yPos:yDiff,yVel:0,xVel:0};
 let player = {xPos:20,yPos:20,yVel:0,xVel:0,shoottimer:0,width:20,height:30};
@@ -27,7 +27,8 @@ function tree(xPos, yPos){
   this.ypos = yPos
 }
 
-let buildItems = [["tree",10]];
+let buildItems = [["Apple Tree",15],["Oak Tree",7],["Maple Tree",10],["Box",1],["Loot Box",10]];
+
 
 let mapbounds = 600;
 
@@ -158,9 +159,9 @@ function initGame(){
 function game(){
   move();
   draw(drawArrayA);
-  mouse();
-
+  //mouse();
 }
+
 function mouseInbounds(obj){
   if (pointerx > obj.xpos && pointerx <  obj.xpos + obj.width){
     if (pointery > obj.ypos && pointery <  obj.ypos + obj.height){
@@ -187,30 +188,60 @@ function move(){
   if (cameraMode !== "Free") movePlayer();
   moveCamera();
   menu();
-
 }
 
 let menuType = "";
+let key81pressed = false;
 let key69pressed = false;
+let menuIndex = 0;
+let startMenuIndex = 0;
 
 function menu(){
-  /*
-  if (key[69]){
-    if (menuType != ""){
-      menuType = "";
-    } else {
-        menuType = "Build";
-    }
-  }*/
-  if (key[69]){
-    key69pressed = true;
-  } else {
-    if (key69pressed){
+
+  if (key[81])key81pressed = true;
+  else {
+    if (key81pressed){
       //close menu
       toggleMenu('Build');
     }
+      key81pressed = false;
+  }
+
+  if (key[69])key69pressed = true;
+  else {
+    if (key69pressed){
+      //close menu
+      if (menuType == "Build"){
+        toggleMenu('Build');
+        buildMode(menuIndex);
+      }
+    }
       key69pressed = false;
   }
+
+
+  if (menuType != ""){
+
+    if(key[38]) {startMenuIndex = -1;}
+    if(key[40]) {startMenuIndex = 1;}
+
+    if(!(key[38] || key[40])){
+      if (startMenuIndex != 0){
+        menuIndex += startMenuIndex;//dont do anything
+      }
+      startMenuIndex = 0;
+    }
+
+    if(menuType == "Build"){
+      if(menuIndex < 0 ) menuIndex = buildItems.length -1;
+      menuIndex = menuIndex % buildItems.length;
+    }
+
+  }
+}
+
+function buildMode(ToBuild){
+  cameraMode = "Free";//todo: make it so when E is pressed the item is placed
 }
 
 function toggleMenu(Type){
@@ -335,10 +366,9 @@ function checkPlayerCollisionX() {
 
 function checkCollisionY(x,y,vel) {return y+vel}
 
-function movePlayer(){
 
-	//let toBeX = checkPlayerCollisionX();
-	//if (toBeX == player.xPos) player.xVel = 0;
+
+function movePlayer(){
 
 	player.xPos += player.xVel;
   player.yPos += player.yVel;
@@ -362,16 +392,22 @@ function movePlayer(){
   if(key[83])player.yVel +=0.5;//S
   if(key[68])player.xVel +=0.5;//D
 
-  if(key[37])shoot(-1,0);//left
-  if(key[38])shoot(0,-1);//up
-  if(key[39])shoot(1,0);//right
-  if(key[40])shoot(0,1);//down
+  if (menuType == ""){
+    if(key[37])shoot(-1,0);//left
+    if(key[38])shoot(0,-1);//up
+    if(key[39])shoot(1,0);//right
+    if(key[40])shoot(0,1);//down
+}
 }
 
 
 function moveCamera(){
 
   if (cameraMode === "Free") {
+
+    //press e to exit
+    if (key[69])cameraMode = "Player";
+
     camera.xPos += camera.xVel;
     camera.yPos += camera.yVel;
 
@@ -427,24 +463,45 @@ function shoot(shoot_xvel, shoot_yvel){
 function drawMenu(){
   if (menuType == "") return;
 
-  board.globalAlpha = 0.4;
-  board.fillStyle = "#000000";
-  board.fillRect(0, 0, canvas.width, canvas.height);
-
 if (menuType == "Build"){
   //background of menu
-  board.globalAlpha = 0.95;
+//  board.globalAlpha = 0.95;
   board.fillStyle = "#424242";
-  board.fillRect(canvas.width-210, 10, 200, 20+ 40*buildItems.length);
+  board.fillRect(canvas.width-210, 10, 200, 05 + 35*buildItems.length);
+
+  board.fillStyle = "#000000";
+  board.fillText("[e] select [q] exit" ,canvas.width-200,30+35*buildItems.length);
 
   //display items
+  board.font = "22px VT323";
   for (let i = 0; i < buildItems.length; i++){
-    board.fillStyle = "#BDBDBD";
-    board.fillRect(canvas.width-210, 10, 200, 20+ 40*buildItems.length);
+    if (menuIndex == i){//if item is selected
+
+      board.fillStyle = "#FFE082";
+      board.fillRect(canvas.width-207, 13+35*i, 194, 34);
+
+
+      board.fillStyle = "#FFA000";
+      board.fillRect(canvas.width-205, 15+35*i, 190, 30);
+
+
+      board.fillStyle = "#000000";
+      board.fillText(buildItems[i][0] + " - " + buildItems[i][1] ,canvas.width-200,35+35*i);
+
+
+    }else{
+
+      board.fillStyle = "#BDBDBD";
+      board.fillRect(canvas.width-205, 15+35*i, 190, 30);
+
+      board.fillStyle = "#000000";
+      board.fillText(buildItems[i][0] + " - " + buildItems[i][1] ,canvas.width-200,35+35*i);
+
+    }
   }
 }
 
-  board.globalAlpha = 1;
+  //board.globalAlpha = 1;
 };
 
 
@@ -459,7 +516,7 @@ function draw(drawArray){
     board.fillRect(object.xpos + camera.xPos,object.ypos + camera.yPos,object.width,object.height);
 
     if (object.hasOwnProperty('hovered')){if (object.hovered > 0) {
-      board.font = "16px Arial";
+      board.font = "16px VT323";
       board.fillStyle = "#2A2A2F";
       board.textAlign = "center";
       board.fillText(object.words, object.xpos + camera.xPos + (object.width/2), object.ypos + camera.yPos - 10);
@@ -469,7 +526,7 @@ function draw(drawArray){
   let xdiff = pointerx - player.xPos;
   let ydiff = pointery - player.yPos;
 
-  board.font = "18px Arial";
+  board.font = "18px VT323";
   board.textAlign = "left";
   board.fillText("player: x = " +player.xPos+ " , y = " +player.yPos,50,25);
   board.fillStyle = "#212121";
