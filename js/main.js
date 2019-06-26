@@ -22,6 +22,13 @@ let pointery = 0;
 
 let drawArrayA = [];
 
+function tree(xPos, yPos){
+  this.xpos = xPos;
+  this.ypos = yPos
+}
+
+let buildItems = [["tree",10]];
+
 let mapbounds = 600;
 
 let mNamesNP = [{'Aaron':'AronRonRonnieRonny'},{'Abel':'AbeAbie'},{'Abner':'AbAbbie'},{'Abraham':'AbramAbeAbieBram'},{'Adam':'AdAddieAddyAde'},{'Adelbert':'AdalbertAdAdeAlBertBertieDel'},{'Adrian':'Ade'},{'Alan':'AllanAllenAl'},{'Albert':'AlBertBertie'},{'Alexander':'AlAlexAlecAleckLexSandySander'},{'Alfred':'AlAlfAlfieFredFreddieFreddy'},{'Algernon':'AlgieAlgyAlger'},{'Alister':'AllisterAlistairAlastairAlasterAl'},{'Alonso':'AlonzoAlLonLonnieLonny'},{'Alphonso':'AlfonsoAlAlfAlfieAlonsoLon'},{'Alva':'AlvahAlvanAl'},{'Alvin':'AlwinAlwynAlVinVinnyWin'},{'Ambrose':'AmbieBrose'},{'Amos':''},{'Andrew':'AndyDrew'},{'Angus':'Gus'},{'Anselm':'AnselAnse'},{'Anthony':'AntonyAntonTony'},{'Archibald':'ArchArchieBaldie'},{'Arnold':'Arnie'},{'Arthur':'ArtArtie'},{'Augustus':'AugustAugieGusGussyGustGustus'},{'Augustine':'AugustinAugieAustinGusGussyGust'},{'Austin':'(seeAugustine)'},{'Avery':'Avy'},{'Baldwin':'BaldieWin'},{'Barrett':'BarryBarrie'},{'Bartholomew':'BartBartyBartlettBartleyBatBatty'},{'Basil':'BazBasie'},{'Benedict':'BenBennieBenny'},{'Benjamin':'BenBennieBennyBenjyBenjie'},{'Bennet':'BennettBenBennieBenny'},{'Bernard':'BarnardBernieBerneyBarneyBarnie'},{'Bert':'Bertie(seeAlbertAdelbertBertramDelbertEgbertElbertGilbertHerbertHubertLambertOsbertRobertWilbert)'},{'Berthold':'BertBertie'},{'Bertram':'BertrandBertBertie'},{'Bill':'BillyBillie(SeeWilliamWillis)'},{'Blair':''},{'Blake':''},{'Boris':''},{'Bradford':'BradFord'},{'Bradley':'Brad'},{'Brady':''},{'Brandon':'BrandenBrandBrandy'},{'Brenton':'Brent'},{'Bret':'Brett'},{'Brian':'BryanBryant'},{'Broderick':'BrodieBrodyBradyRickRicky'},{'Bruce':''},{'Bruno':''},{'Burton':'Burt'},{'Byron':'RonRonnieRonny'},{'Caleb':'Cal'},{'Calvin':'CalVinVinny'},{'Cameron':'CamRonRonny'},{'Carey':'CaryCarry'},{'Carl':'Karl'},{'Carol':'CarrolCarroll'},{'Casey':'Kasey'},{'Caspar':'CasperCasCass'},{'Cassius':'CasCass'},{'Cecil':'Cis'},{'Cedric':'CedRickRicky'},{'Charles':'CharlieCharleyChuckChadChas'},{'Chester':'Chet'},{'Christian':'ChrisChristyKit'},{'Christopher':'KristopherChrisKrisCrisChristyKitKesterKristofTophTopher'},{'Clarence':'ClareClair'},{'Clare':'Clair'},{'Clark':'Clarke'},{'Claude':'Claud'},{'Clayton':'Clay'},{'Clement':'Clem'},{'Clifford':'CliffFord'},{'Clinton':'Clint'},{'Clive':''},{'Clyde':''},{'Cody':''},{'Colin':'CollinCole'},{'Conrad':'ConConnieConny'},{'Corey':'Cory'},{'Cornelius':'ConnieConnyCornyCorneyCory'},{'Craig':''},{'Curtis':'Curt'},{'Cyril':'Cy'},{'Cyrus':'Cy'},{'Dale':''},{'Daniel':'DanDanny'},{'Darrell':'DarrelDarrylDarylDarry'},{'David':'DaveDaveyDavieDavy'},{'Dean':'Deane'},{'Delbert':'DelBertBertie'},{'Dennis':'DenisDenDenny'},{'Derek':'DerrickDerryRickRicky'},{'Desmond':'Des'},{'Dexter':'Dex'},{'Dominic':'DominickDomenicDomenickDomNickNicky'},{'Don':'DonnieDonny'},{'Donald':'DonDonnieDonny'},{'Donovan':'DonDonnieDonny'},{'Dorian':''},{'Douglas':'DouglassDoug'},{'Doyle':''},{'Drew':'(seeAndrew)'},{'Duane':'Dwayne'},{'Dudley':'DudDuddy'},{'Duke':''},{'Duncan':'DunnyDunk'},{'Dustin':'Dusty'},{'Dwight':''},{'Dylan':'Dillon'},{'Earl':'Earle'},{'Edgar':'EdEddieEddyNed'},{'Edmund':'EdmondEdEddieEddyNedTed'},{'Edward':'EdEddieEddyNedTedTeddy'},{'Edwin':'EdEddieEddyNed'},{'Egbert':'BertBertie'},{'Elbert':'ElBertBertie'},{'Eldred':'El'},{'Elijah':'EliasEliLige'},{'Elliot':'ElliottEl'},{'Ellis':'El'},{'Elmer':'El'},{'Elton':'AltonElAl'},{'Elvin':'ElwinElwynElVinVinnyWin'},{'Elvis':'El'},{'Elwood':'ElWoody'},{'Emery':'EmmeryEmoryEm'},{'Emil':'EmileEm'},{'Emmanuel':'EmanuelImmanuelManuelMannyMannie'},{'Emmet':'EmmettEm'},{'Eric':'ErikErickRickRicky'},{'Ernest':'EarnestErnie'},{'Errol':''},{'Ervin':'ErwinIrvinIrvineIrvingIrwinErvVinWin'},{'Ethan':''},{'Eugene':'Gene'},{'Eustace':'StacyStacey'},{'Evan':'Ev'},{'Everard':'Ev'},{'Everett':'Ev'},{'Fabian':'FabeFab'},{'Felix':'Lix'},{'Ferdinand':'FerdieFredFreddie'},{'Fergus':'FergusonFergie'},{'Floyd':'Floy(seeLloyd)'},{'Ford':'(seeBradfordCliffordSanford)'},{'Francis':'FrankFrankieFrankyFran'},{'Franklin':'FranklynFrankFrankieFranky'},{'Frederick':'FredericFredrickFredricFredFreddieFreddyRickRicky'},{'Fred':'Freddie(seeAlfredFrederickWilfredWinfred)'},{'Gabriel':'GabeGabby'},{'Garrett':'GarretGaryGarr'},{'Geoffrey':'JeffreyJefferyJeff'},{'George':'GeorgieGeordie'},{'Gerald':'GerardGerryJerry'},{'Gilbert':'GilBert'},{'Glenn':'Glen'},{'Gordon':'GordyDon'},{'Graham':''},{'Grant':''},{'Gregory':'GregorGregGregg'},{'Griffith':'GriffinGriff'},{'Guy':''},{'Harold':'HalHarry'},{'Harris':'HarrisonHarry'},{'Harvey':'Harve'},{'Hector':''},{'Henry':'HarryHankHal'},{'Herbert':'HerbBertBertie'},{'Herman':'MannyMannie'},{'Hilary':'HillaryHillHillieHilly'},{'Homer':''},{'Horace':'Horatio'},{'Howard':'Howie'},{'Hubert':'HughBertBertieHube'},{'Hugh':'HughieHugo'},{'Humphrey':'HumphryHumph'},{'Ian':''},{'Ignatius':'IggyNate'},{'Immanuel':'MannyMannie(seeEmmanuel)'},{'Irvin':'IrvineIrvingIrwin(seeErvin)'},{'Isaac':'IsaakIke'},{'Isidore':'IsidorIsadoreIsadorIzzy'},{'Ivor':''},{'Jack':'JackieJacky(seeJohn)'},{'Jacob':'JakeJay'},{'James':'JimJimmyJimmieJamieJem'},{'Jared':'Jerry'},{'Jarvis':'JervisJerry'},{'Jason':'Jay'},{'Jasper':'Jay'},{'Jefferson':'Jeff'},{'Jeffrey':'JefferyGeoffreyJeff'},{'Jeremy':'JeremiahJerry'},{'Jerome':'Jerry'},{'Jesse':'JessJessieJessy'},{'Joel':'Joe'},{'John':'JackJackieJackyJohnny'},{'Jonathan':'JonJonny'},{'Joseph':'JoeJoeyJoJosJody'},{'Joshua':'Josh'},{'Judson':'JudSonny'},{'Julian':'JuliusJuleJules'},{'Justin':'JusJust'},{'Karl':'Carl'},{'Keith':''},{'Kelly':'Kelley'},{'Kelvin':'KelKelly'},{'Kendall':'KenKenny'},{'Kendrick':'KenKennyRickRicky'},{'Kenneth':'KenKenny'},{'Kent':'KenKenny'},{'Kevin':'Kev'},{'Kirk':''},{'Kristopher':'KristoferKrisKitKester(seeChristopher)'},{'Kurt':'Curt'},{'Kyle':''},{'Lambert':'Bert'},{'Lamont':'MontyMonte'},{'Lancelot':'LauncelotLance'},{'Laurence':'LawrenceLorenceLorenzoLarryLarsLaurieLawrieLorenLauren'},{'Lee':'Leigh'},{'Leo':'LeonLee'},{'Leonard':'LeoLeonLenLennyLennie'},{'Leopold':'LeoPoldie'},{'Leroy':'LeeroyLeeRoy'},{'Leslie':'LesleyLes'},{'Lester':'Les'},{'Lewis':'LewLewie'},{'Lincoln':'LinLincLynn'},{'Lindon':'LyndonLinLynn'},{'Lindsay':'LindseyLinLynn'},{'Linus':''},{'Lionel':'LeoLeon'},{'Llewellyn':'LlewLyn'},{'Lloyd':'LoydLoydeFloydLoyFloy'},{'Logan':''},{'Lonnie':'Lonny(seeAlonso)'},{'Louis':'LouLouie'},{'Lowell':'Lovell'},{'Lucian':'LuciusLuLuke'},{'Luke':'LucasLuke'},{'Luther':'LootLuth'},{'Lyle':'Lyall'},{'Lynn':''},{'Malcolm':'MalMalcMac'},{'Manuel':'MannyMannie(seeEmmanuel)'},{'Marion':''},{'Mark':'MarcMarcusMarkMarc'},{'Marshall':'Marshal'},{'Martin':'MartMarty'},{'Marvin':'MervinMarvMerv'},{'Matthew':'MattMatMattyMattie'},{'Matthias':'MattMatMattyMattie'},{'Maurice':'MorrisMorryMoreyMoe'},{'Maximilian':'Max'},{'Maxwell':'Max'},{'Maynard':''},{'Melvin':'Mel'},{'Merlin':'Merle'},{'Merrill':'MerrilMerill'},{'Michael':'MikeMikeyMickMickeyMicky'},{'Miles':'MylesMilo'},{'Milo':''},{'Milton':'Milt'},{'Mitchell':'Mitch'},{'Monroe':'Munroe'},{'Montague':'MontyMonte'},{'Montgomery':'MontyMonte'},{'Morgan':'Mo'},{'Mortimer':'MortMorty'},{'Morton':'MortMorty'},{'Moses':'MoMoeMoseMoss'},{'Murray':'Murry'},{'Nathan':'NathanielNatNateNatty'},{'Neal':'Neil'},{'Nelson':'NelNellNels'},{'Nevill':'NevilNevileNevilleNev'},{'Newton':'Newt'},{'Nicholas':'NicolasNickNickyNicolColeColin'},{'Nigel':'Nige'},{'Noah':''},{'Noel':'Nowell'},{'Norbert':'Bert'},{'Norris':'NorNorrie'},{'Norman':'NormNormieNorNorrie'},{'Norton':'Nort'},{'Oliver':'OllieNollNollieNolly'},{'Orson':''},{'Orville':'OrvOllie'},{'Osbert':'OssyOzzieOzzyBert'},{'Osborn':'OsborneOssyOzzieOzzy'},{'Oscar':'OsOssy'},{'Osmond':'OsmundOssyOzzieOzzy'},{'Oswald':'OswoldOsOssyOzOzzieOzzy'},{'Otis':''},{'Owen':''},{'Patrick':'PatPaddyPatsy'},{'Paul':'Pauly'},{'Percival':'PercevalPercyPerce'},{'Perry':''},{'Peter':'PetePetiePetey'},{'Philip':'PhillipPhilPip'},{'Preston':''},{'Quentin':'QuintinQuentonQuintonQuinn'},{'Quincy':'QuinceyQuinn'},{'Ralph':'RaffRafeRalphy'},{'Randall':'RandalRandRandy'},{'Randolph':'RandRandyDolph'},{'Raphael':'RafaelRaffRafe'},{'Raymond':'RaymundRay'},{'Reginald':'RegReggieRennyRex'},{'Rene':''},{'Reuben':'RubenRubinRubeRuby'},{'Reynold':'Ray'},{'Richard':'DickRickRickyRichRichie'},{'Rick':'Ricky(seeCedricDerekEricFrederickRichardRodericBroderickKendrick)'},{'Robert':'BobBobbieBobbyDobRobRobbieRobbyRobinBert'},{'Roderic':'RoderickRodRoddyRickRicky'},{'Rodney':'RodRoddy'},{'Roger':'RodgerRodRoddyRodgeRoge'},{'Roland':'RowlandRollyRolyRowlyOrlando'},{'Rolph':'RolfRolfe(seeRudolph)'},{'Roman':'RomRomy'},{'Ronald':'RonRonnieRonny'},{'Ron':'RonnieRonny(seeAaronByronCameronRonald)'},{'Roscoe':'Ross'},{'Ross':''},{'Roy':''},{'Rudolph':'RudolfRudyRolfRolphDolphDolf'},{'Rufus':'Rufe'},{'Rupert':''},{'Russell':'RusselRuss'},{'Ryan':''},{'Samson':'SampsonSamSammy'},{'Samuel':'SamSammy'},{'Sanford':'SandyFord'},{'Saul':''},{'Scott':'Scotty'},{'Sean':'ShaunShawnShane'},{'Sebastian':'SebBass'},{'Serge':''},{'Seth':''},{'Seymour':'MoreySy'},{'Shannon':'Shanon'},{'Sheldon':'ShellyShelDon'},{'Shelley':'ShellyShellieShel'},{'Sherman':''},{'Shelton':'ShellyShelTony'},{'Sidney':'SydneySidSyd'},{'Silas':'SiSy'},{'Silvester':'SylvesterSylVester'},{'Simeon':'SimSimieSimmy'},{'Simon':'SiSySimSimieSimmy'},{'Solomon':'SolSollySal'},{'Sonny':'Son'},{'Spencer':''},{'Stacy':'Stacey(seeEustace)'},{'Stanley':'Stan'},{'Stephen':'StevenStephanSteffanStefanSteveStevieStephSteffStef'},{'Stuart':'StewartStuStew'},{'Terence':'TerrenceTerranceTerry'},{'Thaddeus':'ThadeusTadThad'},{'Theodore':'TheodorTedTeddyTheoTerry'},{'Thomas':'TomTommy'},{'Timothy':'TimTimmy'},{'Tobias':'TobyTobiTobie'},{'Todd':''},{'Tony':'(seeAnthony)'},{'Tracy':'Tracey'},{'Travis':'Trav'},{'Trenton':'Trent'},{'Trevor':'Trev'},{'Tristram':'TristamTristanTris'},{'Troy':''},{'Tyler':'Ty'},{'Tyrone':'TyronTy'},{'Ulysses':'UlyUliLyss'},{'Uriah':'UriasUriUria'},{'Valentine':'ValentinVal'},{'Valerian':'ValeriusVal'},{'Van':''},{'Vance':'Van'},{'Vaughan':'Vaughn'},{'Vernon':'VernVerne'},{'Victor':'VicVick'},{'Vincent':'VinceVinVinny'},{'Virgil':'VergilVirge'},{'Wallace':'WallisWallyWallie'},{'Waldo':''},{'Walter':'WaltWallyWallie'},{'Warren':''},{'Wayne':''},{'Wesley':'Wes'},{'Wendell':'DellDel'},{'Wilbert':'WillWillieWillyBert'},{'Wilbur':'WilberWillWillieWilly'},{'Wiley':'WillWillieWilly'},{'Wilfred':'WilfridWillWillieWillyFredFreddieFreddy'},{'Willard':'WillWillieWilly'},{'William':'BillBillyBillieWillWillieWillyLiam'},{'Willis':'BillBillyBillieWillWillieWilly'},{'Wilson':'WillWillieWilly'},{'Winfred':'WinfridWinWinnieWinnyFredFreddieFreddy'},{'Winston':'WinWinnieWinny'},{'Woodrow':'WoodWoody'},{'Xavier':'Zave'},{'Zachary':'ZachariahZachariasZackZackyZac'}]
@@ -112,7 +119,7 @@ function initGame(){
       color:"#000000",
       fName:"box",
       lName:"",
-	  words:"",
+	    words:"",
       hovered:0
     };
     drawArrayA.push(newIGO);
@@ -123,7 +130,7 @@ function initGame(){
   for (let i = 0; i < gameComplexity/2; i ++){
 	let cgender = "M";
 	if (getRandomInt(1) == 1) cgender = "F";
-	
+
     newNS = {
       type:"AI",
       xpos:getRandomInt(mapbounds*2)-mapbounds,
@@ -179,6 +186,39 @@ function move(){
   moveStatic();
   if (cameraMode !== "Free") movePlayer();
   moveCamera();
+  menu();
+
+}
+
+let menuType = "";
+let key69pressed = false;
+
+function menu(){
+  /*
+  if (key[69]){
+    if (menuType != ""){
+      menuType = "";
+    } else {
+        menuType = "Build";
+    }
+  }*/
+  if (key[69]){
+    key69pressed = true;
+  } else {
+    if (key69pressed){
+      //close menu
+      toggleMenu('Build');
+    }
+      key69pressed = false;
+  }
+}
+
+function toggleMenu(Type){
+  if(menuType != ""){
+    menuType = "";
+  }else{
+    menuType = Type;
+  }
 }
 
 function moveNonStatic(){
@@ -228,7 +268,7 @@ function moveStatic(){
     if (thing.friction !== undefined) friction = thing.friction;
     if (thing.xvel !== undefined) thing.xpos += thing.xvel;
     if (thing.yvel !== undefined) thing.ypos += thing.yvel;
-	
+
 	if (thing.life !== undefined){
 		thing.life --;
 		if (thing.life < 0) {
@@ -271,49 +311,16 @@ function pointInObject(point,object) {
 	return false;
 }
 
-/*function checkCollisionX(x,y,vel) {
-	let predict = x + vel;
-	if (predict < -mapbounds)return -mapbounds;
-	if (predict > mapbounds)return mapbounds;
-	for (i = 0; i < drawArrayA.length; i++){
-		let object = drawArrayA[i];
-		if (pointInObject(predict,			y,object))return x;
-		if (pointInObject(predict + 20,		y,object))return x;
-		if (pointInObject(predict,			y + 30,object))return x;
-		if (pointInObject(predict + 20,		y + 30,object))return x;
-		
-		if (pointInPlayer(object.xpos,					object.ypos))return x;
-		if (pointInPlayer(object.xpos + object.width,	object.ypos))return x;
-		if (pointInPlayer(object.xpos,					object.ypos + object.height))return x;
-		if (pointInPlayer(object.xpos + object.width,	object.ypos + object.height))return x;
-	}
-	return x + vel;
-}*/
-/*
-function checkCollisionY(x,y,vel) {
-	let predict = y + vel;
-	if (predict < -mapbounds)return -mapbounds;
-	if (predict > mapbounds)return mapbounds;
-		for (i = 0; i < drawArrayA.length; i++){
-		let object = drawArrayA[i];
-		if (pointInObject(x,		predict,object))return y;
-		if (pointInObject(x + 20,		predict,object))return y;
-		if (pointInObject(x,		predict + 30,object))return y;
-		if (pointInObject(x + 20,		predict + 30,object))return y;
-	}
-	return y + vel;
-}
-*/
 
 function checkPlayerCollisionX() {
-	
+
 	let Bounds = [
 		[player.xPos,					player.yPos],
 		[player.xPos + player.width,	player.yPos],
 		[player.xPos,					player.yPos+player.height],
 		[player.xPos + player.width,	player.yPos+player.height]
 	];
-	
+
 	for (i = 0; i < drawArrayA.length; i++){
 		let object = drawArrayA[i];
 		for (boundi = 0; boundi < Bounds.length; boundi ++){
@@ -322,22 +329,20 @@ function checkPlayerCollisionX() {
 			if (pointInObject(bound,object)) return player.xPos;
 		}
 	}
-	
+
 	return player.xPos+player.xVel;
 	}
-	
-function checkCollisionY(x,y,vel) {return y+vel} 
+
+function checkCollisionY(x,y,vel) {return y+vel}
 
 function movePlayer(){
-	
-	let toBeX = checkPlayerCollisionX();
-	if (toBeX == player.xPos) player.xVel = 0;
-	
+
+	//let toBeX = checkPlayerCollisionX();
+	//if (toBeX == player.xPos) player.xVel = 0;
+
 	player.xPos += player.xVel;
-	
-	
-	
-	player.yPos = checkCollisionY(player.xPos, player.yPos, player.yVel);
+  player.yPos += player.yVel;
+
 	player.shoottimer -= 0.1;
 
   if (Math.abs(player.xVel) > 0.1){
@@ -356,7 +361,7 @@ function movePlayer(){
   if(key[65])player.xVel -=0.5;//A
   if(key[83])player.yVel +=0.5;//S
   if(key[68])player.xVel +=0.5;//D
-  
+
   if(key[37])shoot(-1,0);//left
   if(key[38])shoot(0,-1);//up
   if(key[39])shoot(1,0);//right
@@ -396,12 +401,12 @@ function moveCamera(){
 
 function shoot(shoot_xvel, shoot_yvel){
 	if (player.shoottimer > 0) return;
-	
+
 	let xdiff = pointerx - player.xPos;
 	let ydiff = pointery - player.yPos;
 	let angle = Math.atan(xdiff / ydiff)*(180/3.141592653);
 	let bvel = 5;
-	
+
 	let bullet = {
 		xvel:shoot_xvel * bvel,
 		yvel:shoot_yvel * bvel,
@@ -414,17 +419,40 @@ function shoot(shoot_xvel, shoot_yvel){
 		friction:1,
 		life:100
 	};
-	
+
 	drawArrayA.push(bullet);
 	player.shoottimer = 2;
 }
+
+function drawMenu(){
+  if (menuType == "") return;
+
+  board.globalAlpha = 0.4;
+  board.fillStyle = "#000000";
+  board.fillRect(0, 0, canvas.width, canvas.height);
+
+if (menuType == "Build"){
+  //background of menu
+  board.globalAlpha = 0.95;
+  board.fillStyle = "#424242";
+  board.fillRect(canvas.width-210, 10, 200, 20+ 40*buildItems.length);
+
+  //display items
+  for (let i = 0; i < buildItems.length; i++){
+    board.fillStyle = "#BDBDBD";
+    board.fillRect(canvas.width-210, 10, 200, 20+ 40*buildItems.length);
+  }
+}
+
+  board.globalAlpha = 1;
+};
 
 
 function draw(drawArray){
   board.clearRect(0, 0, canvas.width, canvas.height);//clears board for a new frame
   board.fillStyle = "#9CCC65";
   board.fillRect(0,0,canvas.width,canvas.height);
-  
+
   for(let i = 1; i < drawArray.length; i++){
     let object = drawArray[i];
     board.fillStyle = object.color;
@@ -437,13 +465,16 @@ function draw(drawArray){
       board.fillText(object.words, object.xpos + camera.xPos + (object.width/2), object.ypos + camera.yPos - 10);
     }}
   }
-  
+
   let xdiff = pointerx - player.xPos;
   let ydiff = pointery - player.yPos;
-  
+
   board.font = "18px Arial";
   board.textAlign = "left";
   board.fillText("player: x = " +player.xPos+ " , y = " +player.yPos,50,25);
   board.fillStyle = "#212121";
   board.fillRect(player.xPos + camera.xPos,player.yPos + camera.yPos,20,30);
+
+  drawMenu();
+
 }
