@@ -11,9 +11,11 @@ const xDiff = 400;
 const yDiff = 300;
 
 let cameraMode = "Player";
+let messager = {text:"", timer:0,urgent:true};
 
 let camera = {xPos:xDiff,yPos:yDiff,yVel:0,xVel:0};
 let player = {xPos:20,yPos:20,yVel:0,xVel:0,shoottimer:0,width:20,height:30};
+let playerInfo = {coins:100}
 
 let mousex = 0;
 let mousey = 0;
@@ -27,8 +29,9 @@ function tree(xPos, yPos){
   this.ypos = yPos
 }
 
-let buildItems = [["Apple Tree",15],["Oak Tree",7],["Maple Tree",10],["Box",1],["Loot Box",10]];
+let buildItems = [["Apple Tree",15],["Oak Tree",7],["Maple Tree",10],["Box",1],["Loot Box",10],["Godley Tree",50]];
 
+let buildingNow = [];
 
 let mapbounds = 600;
 
@@ -113,7 +116,7 @@ function initGame(){
   for (let i = 0; i < gameComplexity; i ++){
     newIGO =  {
       type:"Static",
-      xpos:getRandomInt(mapbounds*2)-mapbounds,
+      xpos:(getRandomInt(mapbounds*2)-mapbounds),
       ypos:getRandomInt(mapbounds*2)-mapbounds,
       width:20,
       height:20,
@@ -198,6 +201,26 @@ let startMenuIndex = 0;
 
 function menu(){
 
+  if (buildingNow != [] && cameraMode == "Free"){//make it so it snaps to grid
+    if(key[69]){
+      newIGO =  {
+        type:"Static",
+        xpos:Math.ceil((0-camera.xPos+(canvas.width/2))/20)*20,
+        ypos:Math.ceil((0-camera.yPos+(canvas.height/2))/20)*20,
+        width:20,
+        height:20,
+        color:"#f2e91f",
+        fName:"box",
+        lName:"",
+        words:"",
+        hovered:0
+      };
+      drawArrayA.push(newIGO);
+      cameraMode = "Player";
+    }
+  }
+
+
   if (key[81])key81pressed = true;
   else {
     if (key81pressed){
@@ -240,8 +263,21 @@ function menu(){
   }
 }
 
-function buildMode(ToBuild){
-  cameraMode = "Free";//todo: make it so when E is pressed the item is placed
+function displayMessage(text){//todo:upgrade to support multiple messages
+  messager.text = text;
+  messager.timer = 2;
+}
+
+
+function buildMode(toBuild){
+    buildingNow = buildItems[toBuild];
+  if (0 > playerInfo.coins - buildingNow[1]){
+    displayMessage("you dont have enough coins");
+    return;
+  }
+  playerInfo.coins -= buildingNow[1];
+  cameraMode = "Free";
+
 }
 
 function toggleMenu(Type){
@@ -282,7 +318,7 @@ function moveNonStatic(){
 				let ydiff = Math.abs(NS.ypos - NSc.ypos);
 				if (Math.sqrt((xdiff*xdiff) + (ydiff*ydiff)) < 50){
 					NS.hovered = 2;
-					NS.words = "hello";
+					NS.words = "hello " + NS.fName + " " + NS.lName;
 		  }
 		}
 	  }
@@ -406,7 +442,6 @@ function moveCamera(){
   if (cameraMode === "Free") {
 
     //press e to exit
-    if (key[69])cameraMode = "Player";
 
     camera.xPos += camera.xVel;
     camera.yPos += camera.yVel;
@@ -523,13 +558,34 @@ function draw(drawArray){
     }}
   }
 
+  if (buildingNow != [] && cameraMode == "Free"){//todo: actualy make this so its a ghost of what is going to be placed
+    board.fillStyle = "#F57C00";
+    board.fillRect(
+      (canvas.width/2)+(camera.xPos%20),
+      (canvas.height/2)+(camera.yPos%20),
+      20,20);
+  }
+
   let xdiff = pointerx - player.xPos;
   let ydiff = pointery - player.yPos;
 
-  board.font = "18px VT323";
-  board.textAlign = "left";
-  board.fillText("player: x = " +player.xPos+ " , y = " +player.yPos,50,25);
   board.fillStyle = "#212121";
+  board.font = "24px VT323";
+
+  if (messager.timer > 0){
+    board.textAlign = "center";
+    messager.timer -= framerate/2500
+    if (messager.urgent){//make flashing
+
+    }
+    board.fillText(messager.text,canvas.width/2,100);
+  }
+
+  board.font = "20px VT323";
+
+  board.textAlign = "left";
+  board.fillText(playerInfo.coins + " coins",25,25);
+
   board.fillRect(player.xPos + camera.xPos,player.yPos + camera.yPos,20,30);
 
   drawMenu();
