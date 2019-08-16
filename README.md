@@ -25,7 +25,7 @@ Create a menu that pops up when the 'q' button is pressed. The user will be disp
 When an item is selected to be placed the user will be able to choose a place to put it on the map.
 
 ## Story 3:Planting Trees
-### TBA
+Trees change with age
 
 ## Story 4:Multiplayer
 ### TBA
