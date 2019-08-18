@@ -38,6 +38,8 @@ let mapbounds = 600;
 let timeNow = 0;
 let ticker = 0;
 
+let cointemplate = {xpos:100,ypos:100,xvel:0,ypos:0,value:1, type:'Static', sType:"Coin", color:"#FDD835",width:10,height:10};
+
 let itemDictionary = [
     {name:"Apple Tree",   value:15, str:5,  sType:"tree", stage:0, life:0},
     {name:"Oak Tree",     value:7,  str:5,  sType:"tree", stage:0, life:0},
@@ -127,6 +129,9 @@ function getMousePos(canvas, evt) {
 function initGame(){
   let newIGO;
   let newNS;
+
+
+  drawArrayA.push(cointemplate);
   for (let i = 0; i < gameComplexity; i ++){
     newIGO =  {
       type:"Static",
@@ -185,7 +190,6 @@ function timer(){
   if (ticker > framerate/2) {
     timeNow = getTime()
     ticker = 0;
-    console.log(timeNow)
   }
 }
 
@@ -235,7 +239,7 @@ function menu(){
         height:20,
         viewcolor:false,
         color:"#f2e91f",
-        fName:"",
+        fName:buildingNow.name,
         lName:"",
         words:"",
         str:buildingNow.str,
@@ -348,7 +352,7 @@ function moveNonStatic(){
       if (Math.abs(NS.ydest - NS.ypos) < 1) NS.ypos = NS.ydest;
       if (Math.abs(NS.xdest - NS.xpos) < 1) NS.xpos = NS.xdest;
 
-		for (let x = 0; x < drawArrayA.length; x++){
+		for (let x = 0; x < drawArrayA.length; x++){//check distance to other NPCs
 			let NSc = drawArrayA[x];
 			if (NSc.type === "AI" && i != x){
 				let xdiff = Math.abs(NS.xpos - NSc.xpos);
@@ -359,7 +363,25 @@ function moveNonStatic(){
 		  }
 		}
 	  }
+    } else if(NS.sType === "Coin"){
+      let xdiff = NS.xpos - player.xPos;
+      let ydiff = NS.ypos - player.yPos;
+      let maxDraw = 80;
+      if (Math.abs(xdiff) < maxDraw && Math.abs(ydiff) < maxDraw){
+
+        if (xdiff < 0) NS.xvel = (maxDraw/100)-(xdiff/100);
+        else NS.xvel = -(maxDraw/100)-(xdiff/100);
+
+        if (ydiff < 0) NS.yvel = -ydiff/10;
+        else NS.yvel = -ydiff/10;
+
+        if(Math.abs(xdiff) < 10 && Math.abs(ydiff) < 10){
+          playerInfo.coins += NS.value;
+          drawArrayA.splice(i,1);
+        }
+      }
     }
+    if (drawArrayA.length < 0) break;
   }
 }
 
@@ -397,11 +419,17 @@ function moveStatic(){
     if (thing.hovered > 0) thing.hovered -= framerate/1000;
 
     if (thing.sType == "tree"){
-      thing.hovered = 2;
-      thing.words = thing.stage;
+
       if(timeNow - thing.life > thing.stage * 60) {
-          thing.stage += 1
-          console.log(thing.stage);
+        thing.stage += 1;
+      }
+
+      let xdiff = thing.xpos - player.xPos;
+      let ydiff = thing.ypos - player.yPos;
+      let maxDraw = 30;
+      if (Math.abs(xdiff) < maxDraw && Math.abs(ydiff) < maxDraw) {
+        thing.hovered = 1;
+        thing.words = "[e] to chop " + thing.fName;
       }
     }
   }
@@ -552,6 +580,7 @@ function shoot(shoot_xvel, shoot_yvel){
 
 	drawArrayA.push(bullet);
 	player.shoottimer = 2;
+
 }
 
 function drawMenu(){
@@ -601,7 +630,7 @@ function draw(drawArray){
   board.fillStyle = "#9CCC65";
   board.fillRect(0,0,canvas.width,canvas.height);
 
-  for(let i = 1; i < drawArray.length; i++){
+  for(let i = 0; i < drawArray.length; i++){
     let object = drawArray[i];
     board.fillStyle = object.color;
     board.fillRect(object.xpos + camera.xPos,object.ypos + camera.yPos,object.width,object.height);
