@@ -22,6 +22,9 @@ let mousey = 0;
 let pointerx = 0;
 let pointery = 0;
 
+let eOn = false;
+let eRel = false;
+
 let drawArrayA = [];
 
 function tree(xPos, yPos){
@@ -30,8 +33,8 @@ function tree(xPos, yPos){
 }
 
 let buildItems = [["Apple Tree",15],["Oak Tree",7],["Maple Tree",10],["Box",1],["Loot Box",10],["Treasure Tree",50]];
-
 let buildingNow = [];
+let menuDetails = {type:"",items:[],index:0};
 
 let mapbounds = 600;
 
@@ -150,16 +153,18 @@ function initGame(){
   drawArrayA.push(cointemplate);
   for (let i = 0; i < gameComplexity; i ++){
     newIGO =  {
-      type:"Static",
-      xpos:(getRandomInt(mapbounds*2)-mapbounds),
-      ypos:getRandomInt(mapbounds*2)-mapbounds,
-      width:20,
-      height:20,
-      color:"#000000",
-      fName:"box",
-      lName:"",
-      words:"",
-      hovered:0
+        type:"Static",
+        hit:false,
+        xpos:(getRandomInt(mapbounds*2)-mapbounds),
+        ypos:getRandomInt(mapbounds*2)-mapbounds,
+        sType:"box",
+        width:20,
+        height:20,
+        color:"#000000",
+        fName:"box",
+        lName:"",
+        words:"",
+        hovered:0
     };
     drawArrayA.push(newIGO);
   }
@@ -171,27 +176,26 @@ function initGame(){
 	if (getRandomInt(1) == 1) cgender = "F";
 
     newNS = {
-      type:"AI",
-      xpos:getRandomInt(mapbounds*2)-mapbounds,
-      ypos:getRandomInt(mapbounds*2)-mapbounds,
-      xvel:0,
-      yvel:0,
-      xdest:getRandomInt(mapbounds*2)-mapbounds,
-      ydest:getRandomInt(mapbounds*2)-mapbounds,
-      xwait:getRandomInt(50),
-      ywait:getRandomInt(50),
-      width:20,
-      height:30,
-      gender:cgender,
-      color:"#b20f5c",
-      fName:generateName(),
-      lName:generateName(),
-      hovered:0
-
+        type:"AI",
+        xpos:getRandomInt(mapbounds*2)-mapbounds,
+        ypos:getRandomInt(mapbounds*2)-mapbounds,
+        xvel:0,
+        yvel:0,
+        xdest:getRandomInt(mapbounds*2)-mapbounds,
+        ydest:getRandomInt(mapbounds*2)-mapbounds,
+        xwait:getRandomInt(50),
+        ywait:getRandomInt(50),
+        width:20,
+        height:30,
+        gender:cgender,
+        color:"#b20f5c",
+        fName:generateName(),
+        lName:generateName(),
+        hovered:0,
+        likes:0
     };
     drawArrayA.push(newNS);
   }
-
 }
 
 function game(){
@@ -246,7 +250,7 @@ function processPlayer(){
 }
 
 
-let menuType = "";
+
 let key81pressed = false;
 let key69pressed = false;
 let menuIndex = 0;
@@ -283,43 +287,73 @@ function menu(){
   if (key[81])key81pressed = true;
   else {
     if (key81pressed){
-      //close menu
-      toggleMenu('Build');
+        toggleMenu('Build')
     }
       key81pressed = false;
   }
+
+    eRel = false;
+    if (!key[69] && eOn) {
+        eRel = true;
+    }
+
+    if (key[69])eOn = true;
+    else eOn = false;
+
 
   if (key[69])key69pressed = true;
   else {
     if (key69pressed){
       //close menu
-      if (menuType == "Build"){
+      if (menuDetails.type == "Build"){
         toggleMenu('Build');
-        buildMode(menuIndex);
+        buildMode(menuDetails.index);
       }
     }
       key69pressed = false;
   }
 
+  if (menuDetails.type === "talk" && eRel)talkMenu();
 
-  if (menuType != ""){
+  if (menuDetails.type !== ""){
 
     if(key[38]) {startMenuIndex = -1;}
     if(key[40]) {startMenuIndex = 1;}
 
     if(!(key[38] || key[40])){
-      if (startMenuIndex != 0){
-        menuIndex += startMenuIndex;//dont do anything
+      if (startMenuIndex !== 0){
+        menuDetails.index += startMenuIndex;//dont do anything
       }
       startMenuIndex = 0;
     }
 
-    if(menuType == "Build"){
-      if(menuIndex < 0 ) menuIndex = buildItems.length -1;
-      menuIndex = menuIndex % buildItems.length;
+    if(menuDetails.type === "Build"){
+      if(menuDetails.index < 0 ) menuDetails.index = buildItems.length -1;
+        menuDetails.index = menuDetails.index % buildItems.length;
     }
 
   }
+}
+
+function talkMenu(){
+    let selected = menuDetails.items[menuDetails.index][0]
+    let NPC = menuDetails.person;
+    if (selected === "Chat"){
+        if (NPC.likes === undefined){
+            NPC.likes = 0;
+        }else{
+            NPC.likes += 10;
+        }
+    }
+    if (selected === "Mug"){
+        if (NPC.likes === undefined){
+            NPC.likes = 0;
+        }else{
+            NPC.likes -= 10;
+        }
+    }
+    console.log(NPC.likes);
+    if (selected === "Bye")closeMenu();
 }
 
 function displayMessage(text){//todo:upgrade to support multiple messages
@@ -348,10 +382,10 @@ function buildMode(toBuild){
 }
 
 function toggleMenu(Type){
-  if(menuType != ""){
-    menuType = "";
+  if(menuDetails.type != ""){
+      menuDetails.type = "";
   }else{
-    menuType = Type;
+      menuDetails.type = Type;
   }
 }
 
@@ -360,57 +394,128 @@ function moveNonStatic(){
     let NS = drawArrayA[i];
 
     if (NS.type === "AI"){
-      if (NS.ywait < 0 && Math.abs(NS.ydest - NS.ypos) < 1) NS.ywait = getRandomInt(50); //create random wait time
-      if (NS.ywait >= 0 && (Math.abs(NS.ydest - NS.ypos) < 1)){//if standing
-        NS.ywait -= framerate/1000;//wait
-        if (NS.ywait < 0) NS.ydest = getRandomInt(mapbounds*2)-mapbounds;//if wait time is up get new destination
-      }
-
-      if (NS.xwait < 0 && Math.abs(NS.xdest - NS.xpos) < 1) NS.xwait = getRandomInt(50); //create random wait time
-      if (NS.xwait >= 0 && (Math.abs(NS.xdest - NS.xpos) < 1)){//if standing
-        NS.xwait -= framerate/1000;//wait
-        if (NS.xwait < 0) NS.xdest = getRandomInt(mapbounds*2)-mapbounds;//if wait time is up get new destination
-      }
-
-      if (Math.abs(NS.ydest - NS.ypos) > 1) NS.yvel = ((NS.ydest - NS.ypos) / Math.abs(NS.ydest - NS.ypos));
-      if (Math.abs(NS.xdest - NS.xpos) > 1) NS.xvel = ((NS.xdest - NS.xpos) / Math.abs(NS.xdest - NS.xpos));
-
-      if (Math.abs(NS.ydest - NS.ypos) < 1) NS.ypos = NS.ydest;
-      if (Math.abs(NS.xdest - NS.xpos) < 1) NS.xpos = NS.xdest;
-
-		for (let x = 0; x < drawArrayA.length; x++){//check distance to other NPCs
-			let NSc = drawArrayA[x];
-			if (NSc.type === "AI" && i != x){
-				let xdiff = Math.abs(NS.xpos - NSc.xpos);
-				let ydiff = Math.abs(NS.ypos - NSc.ypos);
-				if (Math.sqrt((xdiff*xdiff) + (ydiff*ydiff)) < 50){
-					NS.hovered = 2;
-					NS.words = "hello " + NS.fName + " " + NS.lName;
-		  }
-		}
-	  }
+        actNPC(NS,i);
     } else if(NS.sType === "Coin"){
-      let xdiff = NS.xpos - player.xPos;
-      let ydiff = NS.ypos - player.yPos;
-      let maxDraw = 80;
-      if (Math.abs(xdiff) < maxDraw && Math.abs(ydiff) < maxDraw){
-
-        if (xdiff < 0) NS.xvel = (maxDraw/100)-(xdiff/100);
-        else NS.xvel = -(maxDraw/100)-(xdiff/100);
-
-        if (ydiff < 0) NS.yvel = -ydiff/10;
-        else NS.yvel = -ydiff/10;
-
-        if(Math.abs(xdiff) < 10 && Math.abs(ydiff) < 10){
-          playerInfo.coins += NS.value;
-          drawArrayA.splice(i,1);
-        }
-      }
+        actCoin(NS,i);
     }
     if (drawArrayA.length < 0) break;
   }
 }
 
+function actNPC(thing,i){
+
+    if (thing.ywait < 0 && Math.abs(thing.ydest - thing.ypos) < 1) thing.ywait = getRandomInt(50); //create random wait time
+    if (thing.ywait >= 0 && (Math.abs(thing.ydest - thing.ypos) < 1)){//if standing
+        thing.ywait -= framerate/1000;//wait
+        if (thing.ywait < 0) thing.ydest = getRandomInt(mapbounds*2)-mapbounds;//if wait time is up get new destination
+    }
+
+    if (thing.xwait < 0 && Math.abs(thing.xdest - thing.xpos) < 1) thing.xwait = getRandomInt(50); //create random wait time
+    if (thing.xwait >= 0 && (Math.abs(thing.xdest - thing.xpos) < 1)){//if standing
+        thing.xwait -= framerate/1000;//wait
+        if (thing.xwait < 0) thing.xdest = getRandomInt(mapbounds*2)-mapbounds;//if wait time is up get new destination
+    }
+
+    if (thing.holt === true){
+        if (isInInteractionRange(thing.xpos,thing.ypos) === false){
+            thing.holt = false;
+            thing.words = "Bye player";
+            thing.hovered = 3;
+            closeMenu()
+        }
+    } else {
+        moveTowardsTarget(thing);
+    }
+
+
+    //interactions
+    if (isInInteractionRange(thing.xpos,thing.ypos)){
+        thing.hovered = 2;
+        thing.words = "Hi player";
+        if(key69pressed && menuDetails.type === ""){
+            talkWithPlayer(thing);
+        }
+    }
+
+    let interaction = interactionRangeNPC(thing,i);
+    if (interaction === false) return;
+
+    if (interaction.type === "AI"){
+        thing.hovered = 2;
+        thing.words = "Hello " + thing.fName + " " + thing.lName;
+    }
+
+    if (interaction.sType === "tree"){
+        thing.hovered = 2;
+        thing.words = "Nice " + interaction.fName;
+    }
+
+    if (interaction.sType === "box"){
+        thing.hovered = 2;
+        thing.words = "Nice " + interaction.fName;
+    }
+}
+
+function moveTowardsTarget(thing){
+    if (Math.abs(thing.ydest - thing.ypos) > 1) thing.yvel = ((thing.ydest - thing.ypos) / Math.abs(thing.ydest - thing.ypos));
+    if (Math.abs(thing.xdest - thing.xpos) > 1) thing.xvel = ((thing.xdest - thing.xpos) / Math.abs(thing.xdest - thing.xpos));
+
+    if (Math.abs(thing.ydest - thing.ypos) < 1) thing.ypos = thing.ydest;
+    if (Math.abs(thing.xdest - thing.xpos) < 1) thing.xpos = thing.xdest;
+}
+
+function talkWithPlayer(person){
+    menuDetails.index = 0;
+    person.xdest = person.xpos;
+    person.ydest = person.ypos;
+    person.holt = true;
+    person.words = "we talking now";
+    talkTo(person)
+}
+
+function talkTo(person){
+    menuDetails.type = "talk";
+    menuDetails.person = person;
+    openMenu("talk");
+}
+
+function openMenu(toOpen){
+    menuDetails.type = toOpen;
+}
+
+function interactionRangeNPC(thing,i){
+    for (let x = 0; x < drawArrayA.length; x++){//check distance to other NPCs
+        let NSc = drawArrayA[x];
+        if (i !== x){
+            let xdiff = Math.abs(thing.xpos - NSc.xpos);
+            let ydiff = Math.abs(thing.ypos - NSc.ypos);
+            if (Math.sqrt((xdiff*xdiff) + (ydiff*ydiff)) < 50){
+                return NSc;
+            }
+        }
+    }
+    return false;
+}
+
+function actCoin(thing,i){
+    //coin float towards player
+    if (isInCollectionRange(thing.xpos,thing.ypos)){
+        let xdiff = thing.xpos - player.xPos;
+        let ydiff = thing.ypos - player.yPos;
+        let maxDraw = 50;
+
+        if (xdiff < 0) thing.xvel = (maxDraw/100)-(xdiff/100);
+        else thing.xvel = -(maxDraw/100)-(xdiff/100);
+
+        if (ydiff < 0) thing.yvel = -ydiff/10;
+        else thing.yvel = -ydiff/10;
+
+        if(Math.abs(xdiff) < 10 && Math.abs(ydiff) < 10){
+            playerInfo.coins += thing.value;
+            drawArrayA.splice(i,1);
+        }
+    }
+}
 
 function moveStatic(){
 
@@ -450,20 +555,18 @@ function moveStatic(){
         thing.stage += 1;
       }
 
-      let xdiff = thing.xpos - player.xPos;
-      let ydiff = thing.ypos - player.yPos;
-      let maxDraw = 30;
-      if (Math.abs(xdiff) < maxDraw && Math.abs(ydiff) < maxDraw) {
+
+      if (isInInteractionRange(thing.xpos,thing.ypos)) {
         thing.hovered = 1;
         thing.words = "[e] to chop " + thing.fName;
         if (key69pressed && playerInfo.attackCoolDown <= 0){
-          thing.health -= playerInfo.attack;
+            hit(thing);
           playerInfo.attackCoolDown = 2;//todo: change this
         }
       }
     }
 
-    if (thing.health != undefined){
+    if (thing.health !== undefined){
       if (thing.health <= 0){
         drawArrayA.splice(i,1);
         kill(thing);
@@ -475,26 +578,51 @@ function moveStatic(){
   }
 }
 
-function getRandPlacement(pos){
-  return Math.floor(Math.random() * Math.floor(15))-7.5+pos;
+function isInInteractionRange(x,y){
+    let xdiff = x - player.xPos;
+    let ydiff = y - player.yPos;
+    let maxDraw = 30;
+    return Math.abs(xdiff) < maxDraw && Math.abs(ydiff) < maxDraw;
 }
 
+function isInCollectionRange(x,y){
+    let xdiff = x - player.xPos;
+    let ydiff = y - player.yPos;
+    let maxDraw = 80;
+    return Math.abs(xdiff) < maxDraw && Math.abs(ydiff) < maxDraw;
+}
 
-function kill(thing){//spawns whatever is nesicary when an item is destroyed
-  console.log("thing is kill");
+function getRandPlacement(pos){
+  return Math.floor(Math.random() * Math.floor(20))-10  +pos;
+}
+
+function getRandShake(pos){
+    return Math.floor(Math.random() * Math.floor(8))-4  +pos;
+}
+
+function hit(thing){
+    if (thing.health != undefined){
+        thing.health -= playerInfo.attack;
+    }
+    thing.attacked = 3;
+    if (thing.attacked % 3 === 0)  thing.xvel -= thing.attacked/8.5;
+    thing.xpos += thing.attacked;
+    if (thing.attacked % 3 === 0)  thing.yvel += thing.attacked/8.5;
+    thing.ypos -= thing.attacked;
+}
+
+function kill(thing){//spawns whatever is needed when an item is destroyed
   let name = thing.name;
   let type = thing.sType;
   let reward = thing.stage*5;
   let x = thing.xpos;
   let y = thing.ypos;
-  console.log(type);
   if (type == "tree"){
     spawncoins(x,y,reward);
   }
 }
 
 function spawncoins(x,y,value){
-  console.log("spawning coins");
   let xpos = getRandPlacement(x);
   let ypos = getRandPlacement(y);
 
@@ -507,7 +635,6 @@ function spawncoins(x,y,value){
 
 function spawncoin(x,y,value){
   let newCoin = new Coin(value,x,y);
-  console.log(newCoin);
   drawArrayA.push(newCoin);
 }
 
@@ -529,8 +656,7 @@ function pointInObject(point,object) {
 	let xMax = object.xpos + object.width;
 	let yMin = object.ypos;
 	let yMax = object.ypos + object.height;
-	//console.log(point);
-	//console.log(xMin + " > " + point[0] + " < " + xMax);
+
 	if (point[0] > xMin && point[0] < xMax){
 		console.log("within x");
 		if (point[1] > yMin && point[1] < yMax){
@@ -543,7 +669,6 @@ function pointInObject(point,object) {
 
 
 function checkPlayerCollisionX() {
-
 	let Bounds = [
 		[player.xPos,					player.yPos],
 		[player.xPos + player.width,	player.yPos],
@@ -564,8 +689,6 @@ function checkPlayerCollisionX() {
 	}
 
 function checkCollisionY(x,y,vel) {return y+vel}
-
-
 
 function movePlayer(){
 
@@ -591,7 +714,7 @@ function movePlayer(){
   if(key[83])player.yVel +=0.5;//S
   if(key[68])player.xVel +=0.5;//D
 
-  if (menuType == ""){
+  if (menuDetails.type == ""){
     if(key[37])shoot(-1,0);//left
     if(key[38])shoot(0,-1);//up
     if(key[39])shoot(1,0);//right
@@ -657,45 +780,108 @@ function shoot(shoot_xvel, shoot_yvel){
 
 }
 
-function drawMenu(){
-  if (menuType == "") return;
-
-if (menuType == "Build"){
-  //background of menu
-//  board.globalAlpha = 0.95;
-  board.fillStyle = "#424242";
-  board.fillRect(canvas.width-210, 10, 200, 05 + 35*buildItems.length);
-
-  board.fillStyle = "#000000";
-  board.fillText("[e] select [q] exit" ,canvas.width-200,30+35*buildItems.length);
-
-  //display items
-  board.font = "22px VT323";
-  for (let i = 0; i < buildItems.length; i++){
-    if (menuIndex == i){//if item is selected
-
-      board.fillStyle = "#FFE082";
-      board.fillRect(canvas.width-207, 13+35*i, 194, 34);
-
-      board.fillStyle = "#FFA000";
-      board.fillRect(canvas.width-205, 15+35*i, 190, 30);
-
-      board.fillStyle = "#000000";
-      board.fillText(buildItems[i][0] + " - " + buildItems[i][1] ,canvas.width-200,35+35*i);
-    }else{
-      board.fillStyle = "#BDBDBD";
-      board.fillRect(canvas.width-205, 15+35*i, 190, 30);
-
-      board.fillStyle = "#000000";
-      board.fillText(buildItems[i][0] + " - " + buildItems[i][1] ,canvas.width-200,35+35*i);
-
+function closeMenu(){
+    if (menuDetails.type === "talk"){
+        menuDetails.person.hovered = 3;
+        menuDetails.person.words = 'Bye player';
     }
-  }
+    menuDetails.type = "";
 }
 
-  //board.globalAlpha = 1;
-};
+function drawMenu(){
+    if (menuDetails.type === "") return;
+    board.font = "22px VT323";
+    let menuHeight = 5;
+    let innerHeight = 5;
+    if (menuDetails.type === "Build"){
+      //display items
+      menuDetails.items = buildItems;
+        menuHeight += 35* menuDetails.items.length
+    }
 
+    if (menuDetails.type === "talk"){
+        //display items
+        board.font = "22px VT323";
+        menuDetails.items = [['Chat'],['Barter'],['Mug'],['Bye']];
+
+        menuHeight += 35* menuDetails.items.length + 100
+        innerHeight += 35* menuDetails.items.length;
+    }
+
+    board.fillStyle = "#424242";
+    board.fillRect(canvas.width-210, 10, 200, menuHeight);
+
+    board.fillStyle = "#000000";
+    board.fillText("[e] select [q] exit" ,canvas.width-200,30+menuHeight);
+
+    displayItems();
+
+    if (menuDetails.type === 'talk')displayCharDetails(innerHeight);
+}
+
+function displayCharDetails(innerHeight){
+    board.fillStyle = "#FAFAFA";
+    board.fillText(menuDetails.person.fName + " " + menuDetails.person.lName ,canvas.width-200, 30 + innerHeight);
+    let disposition = menuDetails.person.likes;
+    disposition = stringifyLike(disposition);
+    board.fillText(disposition+' you' ,canvas.width-200, 60 + innerHeight);
+}
+
+function displayItems(){
+    for (let i = 0; i < menuDetails.items.length; i++){
+        if (menuDetails.index == i) {//if item is selected
+            board.fillStyle = "#FFE082";
+            board.fillRect(canvas.width - 207, 13 + 35 * i, 194, 34);
+
+            board.fillStyle = "#FFA000";
+            board.fillRect(canvas.width - 205, 15 + 35 * i, 190, 30);
+
+            board.fillStyle = "#000000";
+
+            if (menuDetails.items[i][1] === undefined) {
+                board.fillText(menuDetails.items[i][0], canvas.width - 200, 35 + 35 * i);
+            }else{
+                board.fillText(menuDetails.items[i][0] + " - " + menuDetails.items[i][1], canvas.width - 200, 35 + 35 * i);}
+
+        }else{
+            board.fillStyle = "#BDBDBD";
+            board.fillRect(canvas.width-205, 15+35*i, 190, 30);
+
+            board.fillStyle = "#000000";
+
+            if (menuDetails.items[i][1] === undefined) {
+                board.fillText(menuDetails.items[i][0], canvas.width - 200, 35 + 35 * i);
+            }else{
+                board.fillText(menuDetails.items[i][0] + " - " + menuDetails.items[i][1], canvas.width - 200, 35 + 35 * i);}
+
+        }
+    }
+}
+
+function stringifyLike(amount){
+    if (amount < -90){
+        return 'Hates'
+    }
+    if (amount < -50){
+        return 'Strongly dislikes'
+    }
+    if (amount < -20){
+        return 'Dislikes'
+    }
+    if (amount < 20){
+        return 'Unsure of'
+    }
+    if (amount < 40){
+        return 'Likes'
+    }
+    if (amount < 50){
+        return 'Strongly likes'
+    }
+    if (amount < 100){
+        return 'Loves'
+    }
+    return 'Unsure of'
+}
 
 function draw(drawArray){
   board.clearRect(0, 0, canvas.width, canvas.height);//clears board for a new frame
@@ -703,11 +889,20 @@ function draw(drawArray){
   board.fillRect(0,0,canvas.width,canvas.height);
 
   for(let i = 0; i < drawArray.length; i++){
-    let object = drawArray[i];
-    board.fillStyle = object.color;
-    board.fillRect(object.xpos + camera.xPos,object.ypos + camera.yPos,object.width,object.height);
+      let object = drawArray[i];
+      board.fillStyle = object.color;
 
-    if (object.hasOwnProperty('hovered')){if (object.hovered > 0) {
+      if (object.hasOwnProperty('attacked')){
+          if (object.attacked > 0 ){
+              board.fillStyle = "#ef1111";
+              object.attacked -= 1;
+          }
+      }
+
+      board.fillRect(object.xpos + camera.xPos,object.ypos + camera.yPos,object.width,object.height);
+
+
+      if (object.hasOwnProperty('hovered')){if (object.hovered > 0) {
       board.font = "16px VT323";
       board.fillStyle = "#2A2A2F";
       board.textAlign = "center";
