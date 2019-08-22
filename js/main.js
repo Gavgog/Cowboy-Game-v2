@@ -192,7 +192,9 @@ function initGame(){
         fName:generateName(),
         lName:generateName(),
         hovered:0,
-        likes:0
+        likes:0,
+        fear:0,
+        money:getRandomInt(100),
     };
     drawArrayA.push(newNS);
   }
@@ -346,14 +348,23 @@ function talkMenu(){
         }
     }
     if (selected === "Mug"){
-        if (NPC.likes === undefined){
-            NPC.likes = 0;
-        }else{
-            NPC.likes -= 10;
-        }
+        mug(NPC);
     }
     console.log(NPC.likes);
     if (selected === "Bye")closeMenu();
+}
+
+function mug(NPC){
+    if (NPC.fear === undefined) NPC.fear = 0;
+    if (NPC.fear >= 0){
+        let amount = Math.floor(NPC.money/2);
+        spawncoins(NPC.xpos,NPC.ypos,amount);
+        NPC.money -= amount;
+        NPC.likes -= 30;
+        NPC.fear -= 10;
+    }else{
+        NPC.likes -= 30;
+    }
 }
 
 function displayMessage(text){//todo:upgrade to support multiple messages
@@ -781,10 +792,6 @@ function shoot(shoot_xvel, shoot_yvel){
 }
 
 function closeMenu(){
-    if (menuDetails.type === "talk"){
-        menuDetails.person.hovered = 3;
-        menuDetails.person.words = 'Bye player';
-    }
     menuDetails.type = "";
 }
 
@@ -871,13 +878,13 @@ function stringifyLike(amount){
     if (amount < 20){
         return 'Unsure of'
     }
-    if (amount < 40){
+    if (amount < 540){
         return 'Likes'
     }
-    if (amount < 50){
+    if (amount < 90){
         return 'Strongly likes'
     }
-    if (amount < 100){
+    if (amount >= 90){
         return 'Loves'
     }
     return 'Unsure of'
