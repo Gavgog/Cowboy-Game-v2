@@ -15,7 +15,8 @@ let messager = {text:"", timer:0,urgent:true};
 
 let camera = {xPos:xDiff,yPos:yDiff,yVel:0,xVel:0};
 let player = {xPos:20,yPos:20,yVel:0,xVel:0,shoottimer:0,width:20,height:30};
-let playerInfo = {coins:100, attackCoolDown:0,attack:10}
+let playerInfo = {coins:100, attackCoolDown:0,attack:10};
+let playerInv = [];
 
 let mousex = 0;
 let mousey = 0;
@@ -43,20 +44,205 @@ let ticker = 0;
 
 let cointemplate = {xpos:100,ypos:100,xvel:0,ypos:0,value:1, type:'Static', sType:"Coin", color:"#FDD835",width:10,height:10};
 
-class Coin {
-  constructor(value,x,y){
-    this.xpos = x;
-    this.ypos = y;
-    this.xvel = 0;
-    this.yvel = 0;
-    this.value = value;
-    this.type = 'Static';
-    this.sType = "Coin";
-    this.color = "#FDD835";
-    this.width = 10;
-    this.height = 10;
-  }
+
+class NPC{
+
 }
+
+class FloatingItem {
+    constructor(x,y){
+        this.xpos = x;
+        this.ypos = y;
+        this.xvel = 0;
+        this.yvel = 0;
+        this.value = 0;
+        this.type = 'floating';
+        this.sType = "Coin";
+        this.color = "#FF0000";
+        this.width = 10;
+        this.height = 10;
+    }
+    floatTowardsPlayer(){
+        let xdiff = this.xpos - player.xPos;
+        let ydiff = this.ypos - player.yPos;
+        let maxDraw = 50;
+
+        if (xdiff < 0) this.xvel = (maxDraw/100)-(xdiff/100);
+        else this.xvel = -(maxDraw/100)-(xdiff/100);
+
+        if (ydiff < 0) this.yvel = -ydiff/10;
+        else this.yvel = -ydiff/10;
+    }
+    checkCollected(i){
+        let xdiff = this.xpos - player.xPos;
+        let ydiff = this.ypos - player.yPos;
+        if(Math.abs(xdiff) < 10 && Math.abs(ydiff) < 10){
+            playerInfo.coins += this.value;
+            drawArrayA.splice(i,1);
+        }
+    }
+}
+
+class Coin extends FloatingItem{
+    constructor(value,x,y){
+        super(x,y);
+        this.xpos = x;
+        this.ypos = y;
+        this.xvel = 0;
+        this.yvel = 0;
+        this.value = value;
+        this.type = 'Static';
+        this.sType = "Coin";
+        this.color = "#FDD835";
+        this.width = 10;
+        this.height = 10;
+    }
+}
+
+
+class Block {
+    constructor(x,y,name){
+        this.sType = "block";
+        this.xpos = x;
+        this.ypos = y;
+        this.width = 20;
+        this.height = 20;
+        this.viewcolor = false;
+        this.color = "#0F0F0F";
+        this.fName = name;
+        this.lName = "";
+        this.words = "";
+        this.stage = 1;
+        this.life = timeNow;
+        this.health = 100;
+        this.hovered = 0;
+        this.alive = true;
+    };
+    hit(){
+        this.health -= playerInfo.attack;
+        this.attacked = 3;
+        if (this.attacked % 3 === 0)  this.xvel -= this.attacked/8.5;
+        this.xpos += this.attacked;
+        if (this.attacked % 3 === 0)  this.yvel += this.attacked/8.5;
+        this.ypos -= this.attacked;
+        if (this.health < 0)this.die();
+    }
+    interact(){
+    }
+
+    die(){
+        this.alive = false;
+    }
+}
+
+class Tree extends Block{
+    constructor(x,y,name,value){
+        super(x,y,name);
+        this.sType = "tree";
+        this.xpos = x;
+        this.ypos = y;
+        this.xvel = 0;
+        this.yvel = 0;
+        this.width = 20;
+        this.height = 20;
+        this.viewcolor = false;
+        this.color = "#7FEF7F";
+        this.fName = name;
+        this.lName = "";
+        this.words = "";
+        this.value = value;
+        this.stage = 1;
+        this.life = timeNow;
+        this.health = 100;
+        this.hovered = 0;
+    };
+
+    grow(){
+        if(timeNow - this.life > this.stage * 60) {
+            this.stage += 1;
+        }
+    }
+
+    interact(){
+        this.hovered = 1;
+        this.words = "[e] to chop " + this.fName;
+        if (key69pressed && playerInfo.attackCoolDown <= 0){
+            this.hit();
+            playerInfo.attackCoolDown = 2;
+        }
+    }
+}
+
+class Chest extends Block{
+    constructor(x,y,name,value){
+        super(x,y,name);
+        this.sType = "chest";
+        this.xpos = x;
+        this.ypos = y;
+        this.xvel = 0;
+        this.yvel = 0;
+        this.width = 20;
+        this.height = 20;
+        this.viewcolor = false;
+        this.color = "#7FEF7F";
+        this.fName = name;
+        this.lName = "";
+        this.words = "";
+        this.value = value;
+        this.stage = 1;
+        this.life = timeNow;
+        this.health = 100;
+        this.hovered = 0;
+    };
+
+    interact(){
+        this.hovered = 1;
+        this.words = "[e] to open " + this.fName;
+        if (key69pressed && playerInfo.attackCoolDown <= 0){
+            this.hit();
+            playerInfo.attackCoolDown = 2;
+        }
+    }
+}
+
+class Box extends Block{
+    constructor(x,y,name){
+        super(x,y,name);
+        this.sType = "box";
+        this.xpos = x;
+        this.ypos = y;
+        this.xvel = 0;
+        this.yvel = 0;
+        this.width = 20;
+        this.height = 20;
+        this.viewcolor = false;
+        this.color = "#795548";
+        this.fName = name;
+        this.lName = "";
+        this.words = "";
+        this.value = getRandomInt(10);
+        this.stage = 1;
+        this.life = timeNow;
+        this.health = getRandomInt(15);
+        this.hovered = 0;
+        this.alive = true;
+    };
+
+    interact(){
+        this.hovered = 1;
+        this.words = "[e] to break " + this.fName;
+        if (key69pressed && playerInfo.attackCoolDown <= 0){
+            this.hit();
+            playerInfo.attackCoolDown = 2;
+        }
+    }
+
+    die(){
+        this.alive = false;
+        spawncoins(this.xpos,this.ypos,this.value);
+    }
+}
+
 
 
 let itemDictionary = [
@@ -150,23 +336,11 @@ function initGame(){
   let newNS;
 
 
-  drawArrayA.push(cointemplate);
   for (let i = 0; i < gameComplexity; i ++){
-    newIGO =  {
-        type:"Static",
-        hit:false,
-        xpos:(getRandomInt(mapbounds*2)-mapbounds),
-        ypos:getRandomInt(mapbounds*2)-mapbounds,
-        sType:"box",
-        width:20,
-        height:20,
-        color:"#000000",
-        fName:"box",
-        lName:"",
-        words:"",
-        hovered:0
-    };
-    drawArrayA.push(newIGO);
+      let x = getRandomInt(mapbounds*2)-mapbounds;
+      let y = getRandomInt(mapbounds*2)-mapbounds;
+      let filler = new Box(x,y,'box');
+      drawArrayA.push(filler);
   }
 
 
@@ -262,25 +436,15 @@ function menu(){
 
   if (buildingNow != [] && cameraMode == "Free"){//make it so it snaps to grid
     if(key[69]){
-      newIGO =  {
-        type:"Static",
-        xpos:Math.ceil((0-camera.xPos+(canvas.width/2))/20)*20,
-        ypos:Math.ceil((0-camera.yPos+(canvas.height/2))/20)*20,
-        width:20,
-        height:20,
-        viewcolor:false,
-        color:"#f2e91f",
-        fName:buildingNow.name,
-        lName:"",
-        words:"",
-        str:buildingNow.str,
-        stage:buildingNow.stage,
-        sType:buildingNow.sType,
-        life:timeNow,
-        health:buildingNow.health,
-        hovered:0
-      };
-      drawArrayA.push(newIGO);
+        let newX = Math.ceil((0-camera.xPos+(canvas.width/2))/20)*20;
+        let newY = Math.ceil((0-camera.yPos+(canvas.height/2))/20)*20;
+        if (buildingNow.sType === "tree"){
+            let toBuild = new Tree(newX,newY,buildingNow.name,buildingNow.value);
+            drawArrayA.push(toBuild);
+        }else{
+            let toBuild = new Block(newX,newY);
+            drawArrayA.push(toBuild);
+        }
       cameraMode = "Player";
     }
   }
@@ -317,7 +481,10 @@ function menu(){
 
   if (menuDetails.type === "talk" && eRel)talkMenu();
 
-  if (menuDetails.type !== ""){
+    if (menuDetails.type === "chat" && eRel)chatMenu();
+
+
+    if (menuDetails.type !== ""){
 
     if(key[38]) {startMenuIndex = -1;}
     if(key[40]) {startMenuIndex = 1;}
@@ -341,17 +508,30 @@ function talkMenu(){
     let selected = menuDetails.items[menuDetails.index][0]
     let NPC = menuDetails.person;
     if (selected === "Chat"){
-        if (NPC.likes === undefined){
-            NPC.likes = 0;
-        }else{
-            NPC.likes += 10;
-        }
+        chat(NPC);
+    }
+    if (selected === "Barter"){
+        barterNPC(NPC);
     }
     if (selected === "Mug"){
         mug(NPC);
     }
-    console.log(NPC.likes);
     if (selected === "Bye")closeMenu();
+}
+
+function chatMenu(){
+    let selected = menuDetails.items[menuDetails.index][0]
+    let NPC = menuDetails.person;
+    if (selected === "Information"){
+        chat(NPC);
+    }
+    if (selected === "Banter"){
+        banter(NPC);
+    }
+    if (selected === "Intimidate"){
+        intimidate(NPC);
+    }
+    if (selected === "Back")openMenu('talk');
 }
 
 function mug(NPC){
@@ -361,15 +541,55 @@ function mug(NPC){
         spawncoins(NPC.xpos,NPC.ypos,amount);
         NPC.money -= amount;
         NPC.likes -= 30;
-        NPC.fear -= 10;
+        NPC.fear += 10;
     }else{
         NPC.likes -= 30;
     }
 }
 
+function chat(NPC){
+
+    if (NPC.likes <= -50){
+        notify('NPC dislikes you too much to talk');
+    }
+    if (NPC.fear > 50){
+        notify('NPC is too afraid to talk');
+    }
+    openMenu("chat")
+}
+
+function banter(NPC){
+
+    if (NPC.likes > -50){
+        if (NPC.fear < 10) NPC.likes += 2;
+        else NPC.likes += 1;
+    }
+    if (NPC.likes > 0){
+        if (NPC.fear < 10) NPC.likes += 5;
+        else NPC.likes += 1;
+        if (NPC.fear > 0) NPC.fear -= 1
+    }
+}
+
+function intimidate(NPC){
+
+    if (NPC.likes > 50)NPC.likes -= 2;
+    else NPC.fear += 5;
+}
+
+function barterNPC(NPC){
+
+    if (NPC.likes <= -50){
+        notify('NPC dislikes you too much to trade');
+    }
+    if (NPC.fear > 50){
+        notify('NPC is too afraid of you to trade');
+    }
+}
+
 function displayMessage(text){//todo:upgrade to support multiple messages
   messager.text = text;
-  messager.timer = 2;
+  messager.timer = 1;
 }
 
 function getItemFromList(name){
@@ -443,7 +663,8 @@ function actNPC(thing,i){
     if (isInInteractionRange(thing.xpos,thing.ypos)){
         thing.hovered = 2;
         thing.words = "Hi player";
-        if(key69pressed && menuDetails.type === ""){
+        if(eRel && menuDetails.type === ""){
+            eRel = false;
             talkWithPlayer(thing);
         }
     }
@@ -511,20 +732,8 @@ function interactionRangeNPC(thing,i){
 function actCoin(thing,i){
     //coin float towards player
     if (isInCollectionRange(thing.xpos,thing.ypos)){
-        let xdiff = thing.xpos - player.xPos;
-        let ydiff = thing.ypos - player.yPos;
-        let maxDraw = 50;
-
-        if (xdiff < 0) thing.xvel = (maxDraw/100)-(xdiff/100);
-        else thing.xvel = -(maxDraw/100)-(xdiff/100);
-
-        if (ydiff < 0) thing.yvel = -ydiff/10;
-        else thing.yvel = -ydiff/10;
-
-        if(Math.abs(xdiff) < 10 && Math.abs(ydiff) < 10){
-            playerInfo.coins += thing.value;
-            drawArrayA.splice(i,1);
-        }
+        thing.floatTowardsPlayer();
+        thing.checkCollected(i);
     }
 }
 
@@ -559,34 +768,25 @@ function moveStatic(){
 
 
     if (thing.hovered > 0) thing.hovered -= framerate/1000;
-
-    if (thing.sType == "tree"){
-
-      if(timeNow - thing.life > thing.stage * 60) {
-        thing.stage += 1;
-      }
-
-
-      if (isInInteractionRange(thing.xpos,thing.ypos)) {
-        thing.hovered = 1;
-        thing.words = "[e] to chop " + thing.fName;
-        if (key69pressed && playerInfo.attackCoolDown <= 0){
-            hit(thing);
-          playerInfo.attackCoolDown = 2;//todo: change this
-        }
-      }
+    if (canInteract(thing)) {
+        if (isInInteractionRange(thing.xpos, thing.ypos)) thing.interact();
+        if (thing.sType === "tree") thing.grow();
+        if (thing.alive === false) drawArrayA.splice(i, 1);
     }
 
-    if (thing.health !== undefined){
-      if (thing.health <= 0){
-        drawArrayA.splice(i,1);
-        kill(thing);
-      }
-    }
+
+
 
     if (drawArrayA.length < 0) break;
 
   }
+}
+
+function canInteract(obj){
+    if (typeof obj.interact === 'function'){
+        return true;
+    }
+    return false
 }
 
 function isInInteractionRange(x,y){
@@ -594,6 +794,7 @@ function isInInteractionRange(x,y){
     let ydiff = y - player.yPos;
     let maxDraw = 30;
     return Math.abs(xdiff) < maxDraw && Math.abs(ydiff) < maxDraw;
+
 }
 
 function isInCollectionRange(x,y){
@@ -793,6 +994,7 @@ function shoot(shoot_xvel, shoot_yvel){
 
 function closeMenu(){
     menuDetails.type = "";
+    eRel = false;
 }
 
 function drawMenu(){
@@ -811,7 +1013,16 @@ function drawMenu(){
         board.font = "22px VT323";
         menuDetails.items = [['Chat'],['Barter'],['Mug'],['Bye']];
 
-        menuHeight += 35* menuDetails.items.length + 100
+        menuHeight += 35* menuDetails.items.length + 90;
+        innerHeight += 35* menuDetails.items.length;
+    }
+
+    if (menuDetails.type === "chat"){
+        //display items
+        board.font = "22px VT323";
+        menuDetails.items = [['Information'],['Banter'],['Intimidate'],['Back']];
+
+        menuHeight += 35* menuDetails.items.length + 90;
         innerHeight += 35* menuDetails.items.length;
     }
 
@@ -824,6 +1035,7 @@ function drawMenu(){
     displayItems();
 
     if (menuDetails.type === 'talk')displayCharDetails(innerHeight);
+    if (menuDetails.type === 'chat')displayCharDetails(innerHeight);
 }
 
 function displayCharDetails(innerHeight){
@@ -832,6 +1044,7 @@ function displayCharDetails(innerHeight){
     let disposition = menuDetails.person.likes;
     disposition = stringifyLike(disposition);
     board.fillText(disposition+' you' ,canvas.width-200, 60 + innerHeight);
+    board.fillText('fear: ' + menuDetails.person.fear ,canvas.width-200, 90 + innerHeight);
 }
 
 function displayItems(){
@@ -888,6 +1101,11 @@ function stringifyLike(amount){
         return 'Loves'
     }
     return 'Unsure of'
+}
+
+function notify(message){
+    messager.text = message;
+    messager.timer = 5;
 }
 
 function draw(drawArray){
