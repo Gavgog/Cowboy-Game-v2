@@ -44,9 +44,311 @@ let ticker = 0;
 
 let cointemplate = {xpos:100,ypos:100,xvel:0,ypos:0,value:1, type:'Static', sType:"Coin", color:"#FDD835",width:10,height:10};
 
+class Keyboard{
+    constructor(){
+        this.key = {};
+        this.keyRel = {};
+        this.keyHold = {};
+        this.keyOn = {};
+        this.ph = {};
+    }
+
+    keyIsPressed(num) {
+        if (this.keyOn[num]){
+            this.keyOn[num] = false;
+            return true;
+        }
+        return false;
+    }
+
+    keyIsDown(num) {
+        if (this.key[num]){
+            return true;
+        }
+        return false;
+    }
+
+    keyDown(num){
+        this.stateChange(num);
+    }
+
+    keyUp(num){
+        this.keyRel[num] = true;
+        this.stateChange(num);
+    }
+
+    stateChange(num){
+        this.keyRel[num] = !this.key[num] && this.keyHold[num];
+
+        this.keyHold[num] = (this.key[num] && this.keyOn[num]) || (this.key[num] && this.keyHold[num]);
+
+        this.keyOn[num] = this.key[num] && !this.keyHold[num];
+    }
+
+}
+
+let keyboard = new Keyboard();
+
+class Bullet{
+    constructor(xpos,ypos,xvel,yvel){
+        this.type = "bullet";
+        this.xpos = xpos;
+        this.ypos = ypos;
+        this.xvel = xvel;
+        this.yvel = yvel;
+        this.life = 10;
+        this.damage = 10;
+        this.width = 3;
+        this.height = 3;
+        this.color = "#000000";
+        this.fName = "bullet";
+        this.friction = 1;
+    }
+
+    checkCollisions(){
+        for (let i = 0;i < drawArrayA.length;i++){
+            let block = drawArrayA[i];
+            if (block.type === "AI"){
+                if (collidesWith(this,block)){
+                    block.hit(this.damage);
+                    this.life = 0;
+                }
+            }
+        }
+    }
+
+    move(){
+        this.life -= framerate/1000;
+        this.xpos += this.xvel;
+        this.ypos += this.yvel;
+
+        this.checkCollisions();
+
+        return this.life > 0
+    }
+
+}
 
 class NPC{
+    constructor(){
+        let gender = "M";
+        if (getRandomInt(1) == 1) gender = "F";
+        this.type = "AI";
+        this.xpos = getRandomInt(mapbounds*2)-mapbounds;
+        this.ypos = getRandomInt(mapbounds*2)-mapbounds;
+        this.xvel = 0;
+        this.yvel = 0;
+        this.speed = 1;
+        this.xdest = getRandomInt(mapbounds*2)-mapbounds;
+        this.ydest = getRandomInt(mapbounds*2)-mapbounds;
+        this.xwait = getRandomInt(50);
+        this.ywait = getRandomInt(50);
+        this.width = 20;
+        this.height = 30;
+        this.gender = gender;
+        this.color = "#b20f5c";
+        this.fName = generateName();
+        this.lName = generateName();
+        this.hovered = 0;
+        this.likes = 0;
+        this.fear = 0;
+        this.money = getRandomInt(100);
+        this.talkQueue = [];
+        this.introduced = false;
+        this.hostileTo = [];
+        this.health = 50+getRandomInt(50);
+    }
 
+    mug(){
+        if (this.fear === undefined) this.fear = 0;
+        if (this.fear >= 0){
+            let amount = Math.floor(this.money/2);
+            spawncoins(this.xpos,this.ypos,amount);
+            this.money -= amount;
+            this.likes -= 30;
+            this.fear += 10;
+        }else{
+            this.likes -= 30;
+        }
+    }
+
+    chat(){
+
+        if (this.likes <= -50){
+            notify('NPC dislikes you too much to talk');
+        }
+        if (this.fear > 50){
+            notify('NPC is too afraid to talk');
+        }
+        openMenu("chat")
+    }
+
+    info(){
+        this.talk("Hi Player")
+    }
+
+    banter(){
+
+        if (this.likes > -50){
+            if (this.fear < 10) this.likes += 2;
+            else this.likes += 1;
+        }
+        if (this.likes > 0){
+            if (this.fear < 10) this.likes += 5;
+            else this.likes += 1;
+            if (this.fear > 0) this.fear -= 1
+        }
+    }
+
+    intimidate(){
+
+        if (this.likes > 50)this.likes -= 2;
+        else this.fear += 5;
+    }
+
+    sayHi(){
+        if (this.introduced) {
+            this.talk(this.say("Hi player"));
+            this.introduced = true;
+        }
+    }
+
+    sayBye(){
+        if (!this.introduced) {
+            this.talk(this.say("Bye player"));
+            this.introduced = false;
+        }
+    }
+
+    barter(){
+
+        if (this.likes <= -50){
+            notify('NPC dislikes you too much to trade');
+        }
+        if (this.fear > 50){
+            notify('NPC is too afraid of you to trade');
+        }
+    }
+
+    duel(){
+        closeMenu();
+        this.makeHostile();
+        this.inDuel = true;
+        this.holt = true;
+        startDuel(this);
+    }
+
+    talk(){
+        if (this.hovered < 0){
+            if (this.talkQueue.length > 0){
+                this.talkQueue.splice(0,1);
+                this.hovered = 3;
+            }
+        }
+        if (this.talkQueue.length > 0) this.words = this.talkQueue[0];
+    }
+
+    interupt(whatToSay){
+        this.talkQueue = [whatToSay];
+        this.hovered = 3;
+    }
+
+    say(whatToSay){
+        if (this.hostileTo.length > 0) return;
+        if (this.talkQueue[this.talkQueue.length-1] !== whatToSay) {
+            this.talkQueue.push(whatToSay);
+        }
+    }
+
+    taunt(){
+        if (this.fear > 50){
+            this.interupt("I dont know about this")
+        }else if (this.fear > 10){
+            this.interupt("I hope this goes well")
+        }else{
+            this.interupt("Its over")
+        }
+    }
+
+    makeHostile(){
+        this.hostileTo.push("player");
+        this.speed = 1.6;
+        this.color = "#ff3333"
+    }
+
+    act() {
+
+        if (this.countDownTimer > 0){
+            this.countDownTimer -= framerate/1000;
+            return
+        }
+
+        if (this.hostileTo.length === 0) this.roam();
+        else this.combat();
+    }
+
+    combat(){
+        if (this.hostileTo.indexOf("player") >= 0){
+            //attacking player
+            if (this.weapon == undefined) {
+                this.setTarget(player.xPos, player.yPos);
+                this.moveTowardsTarget();
+            }
+        }
+    }
+
+    setTarget(x,y){
+        this.xdest = x;
+        this.ydest = y;
+    }
+
+    moveTowardsTarget(){
+        if (Math.abs(this.ydest - this.ypos) > 1) this.yvel = this.speed * ((this.ydest - this.ypos) / Math.abs(this.ydest - this.ypos));
+        if (Math.abs(this.xdest - this.xpos) > 1) this.xvel = this.speed *((this.xdest - this.xpos) / Math.abs(this.xdest - this.xpos));
+
+        if (Math.abs(this.ydest - this.ypos) < 1) this.ypos = this.ydest;
+        if (Math.abs(this.xdest - this.xpos) < 1) this.xpos = this.xdest;
+    }
+
+    roam(){
+        if (this.ywait < 0 && Math.abs(this.ydest - this.ypos) < 1) this.ywait = getRandomInt(50); //create random wait time
+        if (this.ywait >= 0 && (Math.abs(this.ydest - this.ypos) < 1)){//if standing
+            this.ywait -= framerate/1000;//wait
+            if (this.ywait < 0) this.ydest = getRandomInt(mapbounds*2)-mapbounds;//if wait time is up get new destination
+        }
+
+        if (this.xwait < 0 && Math.abs(this.xdest - this.xpos) < 1) this.xwait = getRandomInt(50); //create random wait time
+        if (this.xwait >= 0 && (Math.abs(this.xdest - this.xpos) < 1)){//if standing
+            this.xwait -= framerate/1000;//wait
+            if (this.xwait < 0) this.xdest = getRandomInt(mapbounds*2)-mapbounds;//if wait time is up get new destination
+        }
+
+        if (this.holt === true){
+            if (isInInteractionRange(this.xpos,this.ypos) === false){
+                this.holt = false;
+                this.sayBye();
+                closeMenu()
+            }
+        } else {
+            this.moveTowardsTarget();
+        }
+    }
+
+    die(){
+        this.alive = false;
+        spawncoins(this.xpos,this.ypos,this.money);
+
+    }
+
+    hit(damage){
+        this.health -= damage;
+        this.attacked = 3;
+        if (this.attacked % 3 === 0)  this.xvel -= this.attacked/8.5;
+        this.xpos += this.attacked;
+        if (this.attacked % 3 === 0)  this.yvel += this.attacked/8.5;
+        this.ypos -= this.attacked;
+        if (this.health < 0)this.die();
+    }
 }
 
 class FloatingItem {
@@ -166,9 +468,11 @@ class Tree extends Block{
     interact(){
         this.hovered = 1;
         this.words = "[e] to chop " + this.fName;
-        if (key69pressed && playerInfo.attackCoolDown <= 0){
-            this.hit();
-            playerInfo.attackCoolDown = 2;
+        if (playerInfo.attackCoolDown <= 0){
+            if(keyboard.keyIsDown(69)){
+                this.hit();
+                playerInfo.attackCoolDown = 2;
+            }
         }
     }
 }
@@ -198,9 +502,11 @@ class Chest extends Block{
     interact(){
         this.hovered = 1;
         this.words = "[e] to open " + this.fName;
-        if (key69pressed && playerInfo.attackCoolDown <= 0){
-            this.hit();
-            playerInfo.attackCoolDown = 2;
+        if (playerInfo.attackCoolDown <= 0){
+            if(keyboard.keyIsDown(69)) {
+                this.hit();
+                playerInfo.attackCoolDown = 2;
+            }
         }
     }
 }
@@ -231,9 +537,11 @@ class Box extends Block{
     interact(){
         this.hovered = 1;
         this.words = "[e] to break " + this.fName;
-        if (key69pressed && playerInfo.attackCoolDown <= 0){
-            this.hit();
-            playerInfo.attackCoolDown = 2;
+        if (playerInfo.attackCoolDown <= 0){
+            if(keyboard.keyIsDown(69)) {
+                this.hit();
+                playerInfo.attackCoolDown = 2;
+            }
         }
     }
 
@@ -262,7 +570,7 @@ window.onload = function(){
   initGame();
   setInterval(game,1000/framerate);
 };
-
+/*
 canvas.onkeyup = function(e){
   e = e || event;
   key[e.keyCode] = e.type === 'keydown';
@@ -272,6 +580,21 @@ canvas.onkeydown = function(e){
   e = e || event;
   key[e.keyCode] = e.type === 'keydown';
 };
+*/
+canvas.onkeyup = function(e){
+    e = e || event;
+    keyboard.key[e.keyCode] = e.type === 'keydown';
+    keyboard.keyUp(e.keyCode);
+};
+
+
+
+canvas.onkeydown = function(e){
+    e = e || event;
+    keyboard.key[e.keyCode] = e.type === 'keydown';
+    keyboard.keyDown(e.keyCode);
+};
+
 
 canvas.addEventListener('mousemove', function(evt) {
   var mousePos = getMousePos(canvas, evt);
@@ -285,6 +608,36 @@ function randName(gender){
 	if (gender == "m") return Object.keys(mNamesNP[getRandomInt(mNamesNP.length)]);
   return "garry"
 	//return Object.keys(fNamesNP[getRandomInt(fNamesNP.length)])
+}
+
+function collidesWith(object1,object2){
+    let points = [];
+    points.push([object1.xpos,object1.ypos]);
+    points.push([object1.xpos+object1.width,object1.ypos]);
+    points.push([object1.xpos,object1.ypos+object1.width]);
+    points.push([object1.xpos+object1.width,object1.ypos+object1.width]);
+
+    for (let a = 0; a < points.length;a ++){
+        let point = points[a];
+        if (pointInside(point,object2))return true;
+    }
+    return false;
+}
+
+function pointInside(point,object){
+
+    let xMin = object.xpos;
+    let xMax = object.xpos+object.width;
+    let result = between(point[0],xMin,xMax);
+
+    let yMin = object.ypos;
+    let yMax = object.ypos+object.height;
+
+    return result && between(point[1],yMin,yMax);
+}
+
+function between(point,left,right){
+    return point > left && point < right;
 }
 
 function generateName(gender) {
@@ -332,9 +685,6 @@ function getMousePos(canvas, evt) {
 }
 
 function initGame(){
-  let newIGO;
-  let newNS;
-
 
   for (let i = 0; i < gameComplexity; i ++){
       let x = getRandomInt(mapbounds*2)-mapbounds;
@@ -346,31 +696,9 @@ function initGame(){
 
 
   for (let i = 0; i < gameComplexity/2; i ++){
-	let cgender = "M";
-	if (getRandomInt(1) == 1) cgender = "F";
 
-    newNS = {
-        type:"AI",
-        xpos:getRandomInt(mapbounds*2)-mapbounds,
-        ypos:getRandomInt(mapbounds*2)-mapbounds,
-        xvel:0,
-        yvel:0,
-        xdest:getRandomInt(mapbounds*2)-mapbounds,
-        ydest:getRandomInt(mapbounds*2)-mapbounds,
-        xwait:getRandomInt(50),
-        ywait:getRandomInt(50),
-        width:20,
-        height:30,
-        gender:cgender,
-        color:"#b20f5c",
-        fName:generateName(),
-        lName:generateName(),
-        hovered:0,
-        likes:0,
-        fear:0,
-        money:getRandomInt(100),
-    };
-    drawArrayA.push(newNS);
+	let newNPC  = new NPC();
+    drawArrayA.push(newNPC);
   }
 }
 
@@ -379,6 +707,17 @@ function game(){
   draw(drawArrayA);
   timer();
   //mouse();
+}
+
+
+function startDuel(NPC){
+    player.xPos = NPC.xpos;
+    player.yPos = NPC.ypos;
+
+    player.xVel = -20;
+    NPC.xVel = 20;
+    player.duelTimer = 8;
+    NPC.countDownTimer = 8;
 }
 
 function timer(){
@@ -434,8 +773,8 @@ let startMenuIndex = 0;
 
 function menu(){
 
-  if (buildingNow != [] && cameraMode == "Free"){//make it so it snaps to grid
-    if(key[69]){
+  if (buildingNow !== [] && cameraMode === "Free"){//make it so it snaps to grid
+    if(keyboard.key[69]){
         let newX = Math.ceil((0-camera.xPos+(canvas.width/2))/20)*20;
         let newY = Math.ceil((0-camera.yPos+(canvas.height/2))/20)*20;
         if (buildingNow.sType === "tree"){
@@ -449,47 +788,33 @@ function menu(){
     }
   }
 
-
-  if (key[81])key81pressed = true;
-  else {
-    if (key81pressed){
-        toggleMenu('Build')
-    }
-      key81pressed = false;
-  }
-
-    eRel = false;
-    if (!key[69] && eOn) {
-        eRel = true;
+    if (menuDetails.type === "") {
+        if (keyboard.keyIsPressed(81)) {
+            toggleMenu('Build')
+        }
     }
 
-    if (key[69])eOn = true;
-    else eOn = false;
+    if (menuDetails.type === "Build"){
 
-
-  if (key[69])key69pressed = true;
-  else {
-    if (key69pressed){
+        if (keyboard.keyIsPressed(69)){
       //close menu
-      if (menuDetails.type == "Build"){
         toggleMenu('Build');
         buildMode(menuDetails.index);
       }
+
     }
-      key69pressed = false;
-  }
 
-  if (menuDetails.type === "talk" && eRel)talkMenu();
 
-    if (menuDetails.type === "chat" && eRel)chatMenu();
+    if (menuDetails.type === "talk")if (keyboard.keyIsPressed(69))talkMenu();
+    if (menuDetails.type === "chat")if (keyboard.keyIsPressed(69))chatMenu();
 
 
     if (menuDetails.type !== ""){
 
-    if(key[38]) {startMenuIndex = -1;}
-    if(key[40]) {startMenuIndex = 1;}
+    if(keyboard.key[38]) {startMenuIndex = -1;}
+    if(keyboard.key[40]) {startMenuIndex = 1;}
 
-    if(!(key[38] || key[40])){
+    if(!(keyboard.key[38] || keyboard.key[40])){
       if (startMenuIndex !== 0){
         menuDetails.index += startMenuIndex;//dont do anything
       }
@@ -505,22 +830,25 @@ function menu(){
 }
 
 function talkMenu(){
-    let selected = menuDetails.items[menuDetails.index][0]
+    let selected = menuDetails.items[menuDetails.index][0];
     let NPC = menuDetails.person;
     if (selected === "Chat"){
-        chat(NPC);
+        NPC.chat();
     }
     if (selected === "Barter"){
-        barterNPC(NPC);
+        NPC.barter()
+    }
+    if (selected === "Duel"){
+        NPC.duel()
     }
     if (selected === "Mug"){
-        mug(NPC);
+        NPC.mug();
     }
     if (selected === "Bye")closeMenu();
 }
 
 function chatMenu(){
-    let selected = menuDetails.items[menuDetails.index][0]
+    let selected = menuDetails.items[menuDetails.index][0];
     let NPC = menuDetails.person;
     if (selected === "Information"){
         chat(NPC);
@@ -551,9 +879,11 @@ function chat(NPC){
 
     if (NPC.likes <= -50){
         notify('NPC dislikes you too much to talk');
+        return
     }
     if (NPC.fear > 50){
         notify('NPC is too afraid to talk');
+        return
     }
     openMenu("chat")
 }
@@ -635,37 +965,16 @@ function moveNonStatic(){
 
 function actNPC(thing,i){
 
-    if (thing.ywait < 0 && Math.abs(thing.ydest - thing.ypos) < 1) thing.ywait = getRandomInt(50); //create random wait time
-    if (thing.ywait >= 0 && (Math.abs(thing.ydest - thing.ypos) < 1)){//if standing
-        thing.ywait -= framerate/1000;//wait
-        if (thing.ywait < 0) thing.ydest = getRandomInt(mapbounds*2)-mapbounds;//if wait time is up get new destination
-    }
+    thing.act();
 
-    if (thing.xwait < 0 && Math.abs(thing.xdest - thing.xpos) < 1) thing.xwait = getRandomInt(50); //create random wait time
-    if (thing.xwait >= 0 && (Math.abs(thing.xdest - thing.xpos) < 1)){//if standing
-        thing.xwait -= framerate/1000;//wait
-        if (thing.xwait < 0) thing.xdest = getRandomInt(mapbounds*2)-mapbounds;//if wait time is up get new destination
-    }
-
-    if (thing.holt === true){
-        if (isInInteractionRange(thing.xpos,thing.ypos) === false){
-            thing.holt = false;
-            thing.words = "Bye player";
-            thing.hovered = 3;
-            closeMenu()
-        }
-    } else {
-        moveTowardsTarget(thing);
-    }
+    thing.talk();
 
 
     //interactions
     if (isInInteractionRange(thing.xpos,thing.ypos)){
-        thing.hovered = 2;
-        thing.words = "Hi player";
-        if(eRel && menuDetails.type === ""){
-            eRel = false;
-            talkWithPlayer(thing);
+        thing.say("Hi player");
+        if(menuDetails.type === ""){
+            if (keyboard.keyIsPressed(69))talkWithPlayer(thing);
         }
     }
 
@@ -688,26 +997,18 @@ function actNPC(thing,i){
     }
 }
 
-function moveTowardsTarget(thing){
-    if (Math.abs(thing.ydest - thing.ypos) > 1) thing.yvel = ((thing.ydest - thing.ypos) / Math.abs(thing.ydest - thing.ypos));
-    if (Math.abs(thing.xdest - thing.xpos) > 1) thing.xvel = ((thing.xdest - thing.xpos) / Math.abs(thing.xdest - thing.xpos));
-
-    if (Math.abs(thing.ydest - thing.ypos) < 1) thing.ypos = thing.ydest;
-    if (Math.abs(thing.xdest - thing.xpos) < 1) thing.xpos = thing.xdest;
-}
-
 function talkWithPlayer(person){
     menuDetails.index = 0;
     person.xdest = person.xpos;
     person.ydest = person.ypos;
     person.holt = true;
-    person.words = "we talking now";
     talkTo(person)
 }
 
 function talkTo(person){
     menuDetails.type = "talk";
     menuDetails.person = person;
+    menuDetails.items = [['Chat'],['Barter'],['Duel'],['Mug'],['Bye']];
     openMenu("talk");
 }
 
@@ -741,16 +1042,15 @@ function moveStatic(){
 
   for (let i = 0; i < drawArrayA.length; i++){
     let thing = drawArrayA[i];
+    if (thing.alive === false) drawArrayA.splice(i, 1);
+
 	let friction = 1.1;
     if (thing.friction !== undefined) friction = thing.friction;
     if (thing.xvel !== undefined) thing.xpos += thing.xvel;
     if (thing.yvel !== undefined) thing.ypos += thing.yvel;
 
-	if (thing.bulletLife !== undefined){
-		thing.bulletLife --;
-		if (thing.bulletLife < 0) {
-			drawArrayA.splice(i,1);
-		}
+	if (thing.type === "bullet"){
+        if (!thing.move())drawArrayA.splice(i,1);
 		if (drawArrayA.length < 0) break;
 	}
 
@@ -813,7 +1113,7 @@ function getRandShake(pos){
 }
 
 function hit(thing){
-    if (thing.health != undefined){
+    if (thing.health !== undefined){
         thing.health -= playerInfo.attack;
     }
     thing.attacked = 3;
@@ -829,7 +1129,7 @@ function kill(thing){//spawns whatever is needed when an item is destroyed
   let reward = thing.stage*5;
   let x = thing.xpos;
   let y = thing.ypos;
-  if (type == "tree"){
+  if (type === "tree"){
     spawncoins(x,y,reward);
   }
 }
@@ -870,9 +1170,7 @@ function pointInObject(point,object) {
 	let yMax = object.ypos + object.height;
 
 	if (point[0] > xMin && point[0] < xMax){
-		console.log("within x");
 		if (point[1] > yMin && point[1] < yMax){
-					console.log("within y");
 			return true;
 		}
 	}
@@ -921,16 +1219,16 @@ function movePlayer(){
     player.yVel = 0;
   }
 
-  if(key[87])player.yVel -=0.5;//W
-  if(key[65])player.xVel -=0.5;//A
-  if(key[83])player.yVel +=0.5;//S
-  if(key[68])player.xVel +=0.5;//D
+  if(keyboard.key[87])player.yVel -=0.5;//W
+  if(keyboard.key[65])player.xVel -=0.5;//A
+  if(keyboard.key[83])player.yVel +=0.5;//S
+  if(keyboard.key[68])player.xVel +=0.5;//D
 
-  if (menuDetails.type == ""){
-    if(key[37])shoot(-1,0);//left
-    if(key[38])shoot(0,-1);//up
-    if(key[39])shoot(1,0);//right
-    if(key[40])shoot(0,1);//down
+  if (menuDetails.type === ""){
+    if(keyboard.key[37])shoot(-1,0);//left
+    if(keyboard.key[38])shoot(0,-1);//up
+    if(keyboard.key[39])shoot(1,0);//right
+    if(keyboard.key[40])shoot(0,1);//down
 }
 }
 
@@ -954,10 +1252,10 @@ function moveCamera(){
       camera.yVel = 0;
     }
 
-    if (key[87]) camera.yVel += 1;//W
-    if (key[65]) camera.xVel += 1;//A
-    if (key[83]) camera.yVel -= 1;//S
-    if (key[68]) camera.xVel -= 1;//D
+    if (keyboard.key[87]) camera.yVel += 1;//W
+    if (keyboard.key[65]) camera.xVel += 1;//A
+    if (keyboard.key[83]) camera.yVel -= 1;//S
+    if (keyboard.key[68]) camera.xVel -= 1;//D
 
   } else if(cameraMode === "Player"){
     camera.xPos = -player.xPos + xDiff;
@@ -968,25 +1266,14 @@ function moveCamera(){
 
 function shoot(shoot_xvel, shoot_yvel){
 	if (player.shoottimer > 0) return;
+	let shootx = player.xPos + 5;
+	let shooty = player.yPos + 10;
 
-	let xdiff = pointerx - player.xPos;
-	let ydiff = pointery - player.yPos;
-	let angle = Math.atan(xdiff / ydiff)*(180/3.141592653);
-	let bvel = 5;
+	let bulletVelocity = 5;
+	let shootXvel = shoot_xvel * bulletVelocity;
+    let shootYvel = shoot_yvel * bulletVelocity;
 
-	let bullet = {
-		xvel:shoot_xvel * bvel,
-		yvel:shoot_yvel * bvel,
-		xpos:player.xPos + 10,
-		ypos:player.yPos + 10,
-		width:3,
-		height:3,
-		color:"#000000",
-		fName:"bullet",
-		friction:1,
-		life:100
-	};
-
+	let bullet = new Bullet(shootx,shooty,shootXvel,shootYvel);
 	drawArrayA.push(bullet);
 	player.shoottimer = 2;
 
@@ -994,7 +1281,6 @@ function shoot(shoot_xvel, shoot_yvel){
 
 function closeMenu(){
     menuDetails.type = "";
-    eRel = false;
 }
 
 function drawMenu(){
@@ -1011,7 +1297,7 @@ function drawMenu(){
     if (menuDetails.type === "talk"){
         //display items
         board.font = "22px VT323";
-        menuDetails.items = [['Chat'],['Barter'],['Mug'],['Bye']];
+        menuDetails.items = [['Chat'],['Barter'],['Duel'],['Mug'],['Bye']];
 
         menuHeight += 35* menuDetails.items.length + 90;
         innerHeight += 35* menuDetails.items.length;
@@ -1108,6 +1394,24 @@ function notify(message){
     messager.timer = 5;
 }
 
+function drawOverlay(){
+    if (player.duelTimer > 0){
+        player.duelTimer -= framerate/1000;
+        board.fillStyle = "#101010";
+        board.fillRect(0,0,canvas.width,150);
+        board.fillRect(0,canvas.height-150,canvas.width,150);
+
+
+        let text = Math.floor(player.duelTimer/2)
+        if (text === 0)text = "DUEL"
+        board.font = "96px VT323";
+        board.fillStyle = "#eee";
+        board.textAlign = "center";
+        board.fillText(text, canvas.width/2, 96);
+
+    }
+}
+
 function draw(drawArray){
   board.clearRect(0, 0, canvas.width, canvas.height);//clears board for a new frame
   board.fillStyle = "#9CCC65";
@@ -1136,7 +1440,7 @@ function draw(drawArray){
 
   }
 
-  if (buildingNow != [] && cameraMode == "Free"){
+  if (buildingNow !== [] && cameraMode === "Free"){
     board.fillStyle = "#F57C00";
     board.fillRect(
       (canvas.width/2)+(camera.xPos%20),
@@ -1144,15 +1448,13 @@ function draw(drawArray){
       20,20);
   }
 
-  let xdiff = pointerx - player.xPos;
-  let ydiff = pointery - player.yPos;
 
   board.fillStyle = "#212121";
   board.font = "24px VT323";
 
   if (messager.timer > 0){
     board.textAlign = "center";
-    messager.timer -= framerate/2500
+    messager.timer -= framerate/2500;
     if (messager.urgent){//todo: make flashing
 
     }
@@ -1167,5 +1469,6 @@ function draw(drawArray){
   board.fillRect(player.xPos + camera.xPos,player.yPos + camera.yPos,20,30);
 
   drawMenu();
+  drawOverlay();
 
 }
