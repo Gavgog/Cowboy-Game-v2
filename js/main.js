@@ -15,7 +15,7 @@ let messager = {text:"", timer:0,urgent:true};
 
 let camera = {xPos:xDiff,yPos:yDiff,yVel:0,xVel:0};
 let player = {xPos:20,yPos:20,yVel:0,xVel:0,shoottimer:0,width:20,height:30};
-let playerInfo = {coins:100, attackCoolDown:0,attack:10};
+let playerInfo = {coins:100, attackCoolDown:0,attack:10,health:100,maxHealth:100,weapon:null};
 let playerInv = [];
 
 let mousex = 0;
@@ -89,20 +89,59 @@ class Keyboard{
 
 let keyboard = new Keyboard();
 
+
+class weapon{
+    constructor(name,damage,fireRate){
+        this.name = name;
+        this.type = "weapon";
+        this.style = "";
+        this.damage = damage;
+        this.fireRate = fireRate;
+        this.coolDown = 0;
+    }
+
+    attack(){
+
+    }
+}
+
+class gun extends weapon{
+    constructor(name,damage,fireRate){
+        super(name,damage,fireRate);
+        this.name = name;
+        this.type = "weapon";
+        this.style = "range";
+        this.damage = damage;
+        this.fireRate = fireRate;
+        this.coolDown = -1;
+        this.bulletVelocity = 5;
+    }
+
+    attack(author,x,y,xdir,ydir){
+        if (this.coolDown < 0){
+            this.coolDown = this.fireRate;
+            let bullet = new Bullet(author,x,y,xdir*this.bulletVelocity,ydir*this.bulletVelocity,this.damage);
+            drawArrayA.push(bullet);
+        }
+        this.coolDown -= framerate/1000;
+    }
+}
+
 class Bullet{
-    constructor(xpos,ypos,xvel,yvel){
+    constructor(author,xpos,ypos,xvel,yvel,damage){
         this.type = "bullet";
         this.xpos = xpos;
         this.ypos = ypos;
         this.xvel = xvel;
         this.yvel = yvel;
         this.life = 10;
-        this.damage = 10;
-        this.width = 3;
-        this.height = 3;
+        this.damage = damage;
+        this.width = Math.max(3,damage/5);
+        this.height = Math.max(3,damage/5);
         this.color = "#000000";
         this.fName = "bullet";
         this.friction = 1;
+        this.author = author;
     }
 
     checkCollisions(){
@@ -110,10 +149,15 @@ class Bullet{
             let block = drawArrayA[i];
             if (block.type === "AI"){
                 if (collidesWith(this,block)){
+                    if (block === this.author)continue;
                     block.hit(this.damage);
                     this.life = 0;
                 }
             }
+        }
+        if (this.author !== "player" &&collidesWithPlayer(this)){
+            hitPlayer(this.damage,this.xvel,this.yvel);
+            this.life = 0;
         }
     }
 
@@ -156,18 +200,25 @@ class NPC{
         this.talkQueue = [];
         this.introduced = false;
         this.hostileTo = [];
-        this.health = 50+getRandomInt(50);
+        this.health = 20+getRandomInt(20);
+        this.weapon = null;
     }
 
     mug(){
-        if (this.fear === undefined) this.fear = 0;
-        if (this.fear >= 0){
+
+        if (this.fear > 20){
+            //successful mugging
+            this.say("Please dont hurt me");
             let amount = Math.floor(this.money/2);
             spawncoins(this.xpos,this.ypos,amount);
             this.money -= amount;
             this.likes -= 30;
             this.fear += 10;
+        }else if (this.fear < 0){
+            this.say("Im not afraid of you");
+            this.makeHostile();
         }else{
+            this.say("Im not afraid of you");
             this.likes -= 30;
         }
     }
@@ -290,12 +341,60 @@ class NPC{
     combat(){
         if (this.hostileTo.indexOf("player") >= 0){
             //attacking player
-            if (this.weapon == undefined) {
-                this.setTarget(player.xPos, player.yPos);
-                this.moveTowardsTarget();
+            if (this.weapon === null) {
+                //attack melee
+                this.MeleePlayer()
+
+            }else if (this.weapon.style === "range") {
+                //attack with ranged weapon
+                this.moveToShootPlayer();
+                this.shootPlayer();
             }
         }
     }
+
+    MeleePlayer(){
+        this.setTarget(player.xPos, player.yPos);
+        this.moveTowardsTarget();
+        if (collidesWithPlayer(this)){
+            hitPlayer(5,this.xvel,this.yvel);
+            this.xvel = -this.xvel*2
+            this.yvel = -this.yvel*2
+        }
+    }
+
+    moveToShootPlayer(){
+        let xdiff = this.xpos - player.xPos;
+        let ydiff = this.ypos - player.yPos;
+
+        if (Math.abs(xdiff) < Math.abs(ydiff)){
+            if (xdiff < -15) this.xvel = this.speed;
+            else if (xdiff > 15) this.xvel = -this.speed;
+        }else{
+            if (ydiff < -15) this.yvel = this.speed;
+            else if (ydiff > 15) this.yvel = -this.speed;
+        }
+    }
+
+    shootPlayer(){
+        let xdiff = this.xpos - player.xPos;
+        let ydiff = this.ypos - player.yPos;
+
+        let xdir = 0;
+        let ydir = 0;
+
+        if (xdiff > 50) xdir = -1;
+        else if (xdiff < -50) xdir = 1;
+
+        if (ydiff > 50) ydir = -1;
+        else if (ydiff < -50) ydir = 1;
+
+        if (xdir * ydir !== 0)return;
+
+
+        this.weapon.attack(this,this.xpos,this.ypos,xdir,ydir);
+    }
+
 
     setTarget(x,y){
         this.xdest = x;
@@ -364,17 +463,22 @@ class FloatingItem {
         this.width = 10;
         this.height = 10;
     }
+
     floatTowardsPlayer(){
         let xdiff = this.xpos - player.xPos;
         let ydiff = this.ypos - player.yPos;
-        let maxDraw = 50;
+        let maxDraw = 80;
+        let xSpeed = (maxDraw - Math.abs(xdiff))/40;
+        let ySpeed = (maxDraw - Math.abs(ydiff))/40;
 
-        if (xdiff < 0) this.xvel = (maxDraw/100)-(xdiff/100);
-        else this.xvel = -(maxDraw/100)-(xdiff/100);
 
-        if (ydiff < 0) this.yvel = -ydiff/10;
-        else this.yvel = -ydiff/10;
+        if (xdiff > 5) this.xvel = -xSpeed;
+        else if (xdiff < -5) this.xvel = xSpeed;
+
+        if (ydiff > 5) this.yvel = -ySpeed;
+        else if (ydiff < -5)this.yvel = ySpeed;
     }
+
     checkCollected(i){
         let xdiff = this.xpos - player.xPos;
         let ydiff = this.ypos - player.yPos;
@@ -623,6 +727,31 @@ function collidesWith(object1,object2){
     }
     return false;
 }
+function collidesWithPlayer(object1){
+    let points = [];
+    points.push([object1.xpos,object1.ypos]);
+    points.push([object1.xpos+object1.width,object1.ypos]);
+    points.push([object1.xpos,object1.ypos+object1.width]);
+    points.push([object1.xpos+object1.width,object1.ypos+object1.width]);
+
+    for (let a = 0; a < points.length;a ++){
+        let point = points[a];
+        if (pointInsidePlayer(point))return true;
+    }
+    return false;
+}
+
+function pointInsidePlayer(point){
+
+    let xMin = player.xPos;
+    let xMax = player.xPos+player.width;
+    let result = between(point[0],xMin,xMax);
+
+    let yMin = player.yPos;
+    let yMax = player.yPos+player.height;
+
+    return result && between(point[1],yMin,yMax);
+}
 
 function pointInside(point,object){
 
@@ -637,7 +766,7 @@ function pointInside(point,object){
 }
 
 function between(point,left,right){
-    return point > left && point < right;
+    return point >= left && point <= right;
 }
 
 function generateName(gender) {
@@ -676,6 +805,10 @@ function getRandomInt(max){
   return Math.floor(Math.random() * Math.floor(max));
 }
 
+function coinFlip(){
+    return Math.floor(Math.random() * Math.floor(2));
+}
+
 function getMousePos(canvas, evt) {
   var rect = canvas.getBoundingClientRect();
   return {
@@ -686,20 +819,25 @@ function getMousePos(canvas, evt) {
 
 function initGame(){
 
-  for (let i = 0; i < gameComplexity; i ++){
-      let x = getRandomInt(mapbounds*2)-mapbounds;
-      let y = getRandomInt(mapbounds*2)-mapbounds;
-      let filler = new Box(x,y,'box');
-      drawArrayA.push(filler);
-  }
+    let pistol = new gun("Pistol",10,2);
+    playerInfo.weapon = pistol;
 
+    drawArrayA.push(new Coin(1,100,100));
 
+    for (let i = 0; i < gameComplexity; i ++){
+        let x = getRandomInt(mapbounds*2)-mapbounds;
+        let y = getRandomInt(mapbounds*2)-mapbounds;
+        let filler = new Box(x,y,'box');
+        drawArrayA.push(filler);
+    }
 
-  for (let i = 0; i < gameComplexity/2; i ++){
+    for (let i = 0; i < gameComplexity/2; i ++){
+        let NPCpistol = new gun("Pistol",5,3);
+        let newNPC  = new NPC();
+        if (coinFlip())newNPC.weapon = NPCpistol;
 
-	let newNPC  = new NPC();
-    drawArrayA.push(newNPC);
-  }
+        drawArrayA.push(newNPC);
+    }
 }
 
 function game(){
@@ -717,7 +855,7 @@ function startDuel(NPC){
     player.xVel = -20;
     NPC.xVel = 20;
     player.duelTimer = 8;
-    NPC.countDownTimer = 8;
+    NPC.countDownTimer = 8 + randWait();
 }
 
 function timer(){
@@ -829,6 +967,18 @@ function menu(){
   }
 }
 
+function hitPlayer(damage,x,y){
+    playerInfo.health -= damage;
+    player.xVel += x;
+    player.yVel += y;
+    console.log("wow thats alot of damage");
+    if (playerInfo.health < 0)playerDie()
+}
+
+function playerDie(){
+    console.log("Player dead");
+}
+
 function talkMenu(){
     let selected = menuDetails.items[menuDetails.index][0];
     let NPC = menuDetails.person;
@@ -862,18 +1012,6 @@ function chatMenu(){
     if (selected === "Back")openMenu('talk');
 }
 
-function mug(NPC){
-    if (NPC.fear === undefined) NPC.fear = 0;
-    if (NPC.fear >= 0){
-        let amount = Math.floor(NPC.money/2);
-        spawncoins(NPC.xpos,NPC.ypos,amount);
-        NPC.money -= amount;
-        NPC.likes -= 30;
-        NPC.fear += 10;
-    }else{
-        NPC.likes -= 30;
-    }
-}
 
 function chat(NPC){
 
@@ -1105,7 +1243,11 @@ function isInCollectionRange(x,y){
 }
 
 function getRandPlacement(pos){
-  return Math.floor(Math.random() * Math.floor(20))-10  +pos;
+  return Math.floor(Math.random() * Math.floor(40))-20  +pos;
+}
+
+function randWait(){
+    return Math.random() * Math.floor(5);
 }
 
 function getRandShake(pos){
@@ -1137,12 +1279,20 @@ function kill(thing){//spawns whatever is needed when an item is destroyed
 function spawncoins(x,y,value){
   let xpos = getRandPlacement(x);
   let ypos = getRandPlacement(y);
-
-  for (let i = 0; i < value; i ++){
-    xpos = getRandPlacement(x);
-    ypos = getRandPlacement(y);
-    spawncoin(xpos,ypos,1)
+  if (value < 10){
+      for (let i = 0; i < value; i ++){
+          xpos = getRandPlacement(x);
+          ypos = getRandPlacement(y);
+          spawncoin(xpos,ypos,1)
+      }
+  }else{
+      for (let i = 0; i < value/10; i ++){
+          xpos = getRandPlacement(x);
+          ypos = getRandPlacement(y);
+          spawncoin(xpos,ypos,10)
+      }
   }
+
 }
 
 function spawncoin(x,y,value){
@@ -1178,27 +1328,6 @@ function pointInObject(point,object) {
 }
 
 
-function checkPlayerCollisionX() {
-	let Bounds = [
-		[player.xPos,					player.yPos],
-		[player.xPos + player.width,	player.yPos],
-		[player.xPos,					player.yPos+player.height],
-		[player.xPos + player.width,	player.yPos+player.height]
-	];
-
-	for (i = 0; i < drawArrayA.length; i++){
-		let object = drawArrayA[i];
-		for (boundi = 0; boundi < Bounds.length; boundi ++){
-			let bound = Bounds[boundi];
-			bound[0] += player.xVel;
-			if (pointInObject(bound,object)) return player.xPos;
-		}
-	}
-
-	return player.xPos+player.xVel;
-	}
-
-function checkCollisionY(x,y,vel) {return y+vel}
 
 function movePlayer(){
 
@@ -1265,18 +1394,10 @@ function moveCamera(){
 }
 
 function shoot(shoot_xvel, shoot_yvel){
-	if (player.shoottimer > 0) return;
 	let shootx = player.xPos + 5;
 	let shooty = player.yPos + 10;
 
-	let bulletVelocity = 5;
-	let shootXvel = shoot_xvel * bulletVelocity;
-    let shootYvel = shoot_yvel * bulletVelocity;
-
-	let bullet = new Bullet(shootx,shooty,shootXvel,shootYvel);
-	drawArrayA.push(bullet);
-	player.shoottimer = 2;
-
+    playerInfo.weapon.attack('player',shootx,shooty,shoot_xvel,shoot_yvel);
 }
 
 function closeMenu(){
@@ -1395,6 +1516,17 @@ function notify(message){
 }
 
 function drawOverlay(){
+
+    board.font = "20px VT323";
+
+    board.textAlign = "left";
+    board.fillText(playerInfo.coins + " coins",20,25);
+
+    let weapon = "Nothing";
+    if (playerInfo.weapon) weapon = playerInfo.weapon.name;
+    board.fillText(playerInfo.weapon.name,20,canvas.height-20);
+
+
     if (player.duelTimer > 0){
         player.duelTimer -= framerate/1000;
         board.fillStyle = "#101010";
@@ -1408,8 +1540,11 @@ function drawOverlay(){
         board.fillStyle = "#eee";
         board.textAlign = "center";
         board.fillText(text, canvas.width/2, 96);
-
     }
+    board.textAlign = "left";
+    let haelthPercentage = playerInfo.health/playerInfo.maxHealth;
+    board.fillStyle = "#FF2222";
+    board.fillRect(0,canvas.height-10,canvas.width*haelthPercentage,10);
 }
 
 function draw(drawArray){
@@ -1436,6 +1571,7 @@ function draw(drawArray){
       board.fillStyle = "#2A2A2F";
       board.textAlign = "center";
       board.fillText(object.words, object.xpos + camera.xPos + (object.width/2), object.ypos + camera.yPos - 10);
+      board.textAlign = "left";
     }}
 
   }
@@ -1453,7 +1589,6 @@ function draw(drawArray){
   board.font = "24px VT323";
 
   if (messager.timer > 0){
-    board.textAlign = "center";
     messager.timer -= framerate/2500;
     if (messager.urgent){//todo: make flashing
 
@@ -1461,10 +1596,7 @@ function draw(drawArray){
     board.fillText(messager.text,canvas.width/2,100);
   }
 
-  board.font = "20px VT323";
 
-  board.textAlign = "left";
-  board.fillText(playerInfo.coins + " coins",25,25);
 
   board.fillRect(player.xPos + camera.xPos,player.yPos + camera.yPos,20,30);
 
