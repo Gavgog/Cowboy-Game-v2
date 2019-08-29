@@ -18,6 +18,34 @@ let player = {xPos:20,yPos:20,yVel:0,xVel:0,shoottimer:0,width:20,height:30};
 let playerInfo = {coins:100, attackCoolDown:0,attack:10,health:100,maxHealth:100,weapon:null};
 let playerInv = [];
 
+class Player{
+    constructor(){
+        this.inventory = [];
+    }
+    getItem(item){
+        let exists = false;
+        for (let i = 0; i < this.inventory.length;i++){
+            if (this.inventory[i][0] === item){
+                this.inventory[i][1] += 1;
+                exists = true;
+            }
+        }
+        if (!exists)this.inventory.push(item);
+    }
+
+    unequipWeapons(){
+        for (let i = 0; i < this.inventory;i++){
+            if (this.inventory[i].type == "weapon"){
+                this.inventory[i].equiped = false;
+            }
+        }
+    }
+    equipWeapon(weapon){
+        this.unequipWeapons();
+        weapon.equiped = true;
+    }
+}
+
 let mousex = 0;
 let mousey = 0;
 let pointerx = 0;
@@ -88,7 +116,7 @@ class Keyboard{
 }
 
 let keyboard = new Keyboard();
-
+let you = new Player();
 
 class weapon{
     constructor(name,damage,fireRate){
@@ -98,6 +126,7 @@ class weapon{
         this.damage = damage;
         this.fireRate = fireRate;
         this.coolDown = 0;
+        this.equiped = false;
     }
 
     attack(){
@@ -821,6 +850,13 @@ function initGame(){
 
     let pistol = new gun("Pistol",10,2);
     playerInfo.weapon = pistol;
+    you.getItem(pistol);
+
+    let gun1 = new gun("Machine Gun",2,0.5);
+    you.getItem(gun1);
+
+    let gun2 = new gun("Sniper rifle",50,5);
+    you.getItem(gun2);
 
     drawArrayA.push(new Coin(1,100,100));
 
@@ -904,9 +940,6 @@ function processPlayer(){
 
 
 
-let key81pressed = false;
-let key69pressed = false;
-let menuIndex = 0;
 let startMenuIndex = 0;
 
 function menu(){
@@ -928,21 +961,17 @@ function menu(){
 
     if (menuDetails.type === "") {
         if (keyboard.keyIsPressed(81)) {
-            toggleMenu('Build')
+            toggleMenu('playerMenu')
         }
     }
 
-    if (menuDetails.type === "Build"){
-
-        if (keyboard.keyIsPressed(69)){
-      //close menu
-        toggleMenu('Build');
-        buildMode(menuDetails.index);
-      }
-
+    if (keyboard.keyIsPressed(81)) {
+        closeMenu();
     }
 
 
+    if (menuDetails.type === "playerMenu")if (keyboard.keyIsPressed(69))playerMenu();
+    if (menuDetails.type === "Inventory")if (keyboard.keyIsPressed(69))inventory();
     if (menuDetails.type === "talk")if (keyboard.keyIsPressed(69))talkMenu();
     if (menuDetails.type === "chat")if (keyboard.keyIsPressed(69))chatMenu();
 
@@ -965,6 +994,30 @@ function menu(){
     }
 
   }
+}
+function inventory(){
+    let selected = menuDetails.items[menuDetails.index];
+    if (selected.type === "weapon"){
+        you.equipWeapon(selected);
+        playerInfo.weapon = selected;
+    }
+    closeMenu();
+}
+
+function playerMenu(){
+    let selected = menuDetails.items[menuDetails.index][0];
+    if (selected === "Close"){
+        closeMenu()
+    }
+    if (selected === "Inventory"){
+        openMenu("Inventory")
+    }
+    if (selected === "Skills"){
+        closeMenu()
+    }
+    if (selected === "Stats"){
+        closeMenu()
+    }
 }
 
 function hitPlayer(damage,x,y){
@@ -1406,12 +1459,33 @@ function closeMenu(){
 
 function drawMenu(){
     if (menuDetails.type === "") return;
+    /*
+    if (menuDetails.type === "Inventory"){
+        drawInv();
+        board.fillStyle = "#000000";
+        return;
+    }*/
     board.font = "22px VT323";
     let menuHeight = 5;
     let innerHeight = 5;
     if (menuDetails.type === "Build"){
       //display items
       menuDetails.items = buildItems;
+        menuHeight += 35* menuDetails.items.length
+    }
+
+    if (menuDetails.type === "playerMenu"){
+        //display items
+        board.font = "22px VT323";
+        menuDetails.items = [['Inventory'],['Skills'],['Stats'],['Close']];
+        menuHeight += 35* menuDetails.items.length
+    }
+
+    if (menuDetails.type === "Inventory"){
+        //display items
+        board.font = "22px VT323";
+        menuDetails.items = you.inventory;
+        console.log(you.inventory);
         menuHeight += 35* menuDetails.items.length
     }
 
@@ -1445,6 +1519,12 @@ function drawMenu(){
     if (menuDetails.type === 'chat')displayCharDetails(innerHeight);
 }
 
+
+function drawInv(){
+    board.fillStyle = "#888888";
+    board.fillRect(0, canvas.height-60, canvas.width, 60);
+}
+
 function displayCharDetails(innerHeight){
     board.fillStyle = "#FAFAFA";
     board.fillText(menuDetails.person.fName + " " + menuDetails.person.lName ,canvas.width-200, 30 + innerHeight);
@@ -1456,33 +1536,33 @@ function displayCharDetails(innerHeight){
 
 function displayItems(){
     for (let i = 0; i < menuDetails.items.length; i++){
+
         if (menuDetails.index == i) {//if item is selected
             board.fillStyle = "#FFE082";
             board.fillRect(canvas.width - 207, 13 + 35 * i, 194, 34);
 
             board.fillStyle = "#FFA000";
             board.fillRect(canvas.width - 205, 15 + 35 * i, 190, 30);
-
-            board.fillStyle = "#000000";
-
-            if (menuDetails.items[i][1] === undefined) {
-                board.fillText(menuDetails.items[i][0], canvas.width - 200, 35 + 35 * i);
-            }else{
-                board.fillText(menuDetails.items[i][0] + " - " + menuDetails.items[i][1], canvas.width - 200, 35 + 35 * i);}
-
         }else{
+            if (menuDetails.type === "Inventory") {
+                if(menuDetails.items[i].equiped){
+                    board.fillStyle = "#FFA000";
+                    board.fillRect(canvas.width - 207, 13 + 35 * i, 194, 34);
+                }
+            }
             board.fillStyle = "#BDBDBD";
             board.fillRect(canvas.width-205, 15+35*i, 190, 30);
-
-            board.fillStyle = "#000000";
-
-            if (menuDetails.items[i][1] === undefined) {
-                board.fillText(menuDetails.items[i][0], canvas.width - 200, 35 + 35 * i);
-            }else{
-                board.fillText(menuDetails.items[i][0] + " - " + menuDetails.items[i][1], canvas.width - 200, 35 + 35 * i);}
-
         }
+
+        board.fillStyle = "#000000";
+        if (menuDetails.type === "Inventory") printMenuItem(menuDetails.items[i].name,i);
+        else if (menuDetails.items[i][1] === undefined)printMenuItem(menuDetails.items[i][0],i);
+        else printMenuItem(menuDetails.items[i][0] + " - " + menuDetails.items[i][1],i);
     }
+}
+
+function printMenuItem(text,i){
+    board.fillText(text, canvas.width - 200, 35 + 35 * i);
 }
 
 function stringifyLike(amount){
