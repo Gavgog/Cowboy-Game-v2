@@ -10,17 +10,19 @@ const gameComplexity = 10;
 const xDiff = 400;
 const yDiff = 300;
 
+let gamePaused = false;
 let cameraMode = "Player";
 let messager = {text:"", timer:0,urgent:true};
 
 let camera = {xPos:xDiff,yPos:yDiff,yVel:0,xVel:0};
 let player = {xPos:20,yPos:20,yVel:0,xVel:0,shoottimer:0,width:20,height:30};
-let playerInfo = {coins:100, attackCoolDown:0,attack:10,health:100,maxHealth:100,weapon:null};
-let playerInv = [];
+let playerInfo = {coins:100, attackCoolDown:0,attack:10,health:10,maxHealth:10,weapon:null};
+
 
 class Player{
     constructor(){
         this.inventory = [];
+        this.equiped = null;
     }
     getItem(item){
         let exists = false;
@@ -34,15 +36,24 @@ class Player{
     }
 
     unequipWeapons(){
-        for (let i = 0; i < this.inventory;i++){
-            if (this.inventory[i].type == "weapon"){
+        for (let i = 0; i < this.inventory.length; i++){
+            if (this.inventory[i].type === "weapon"){
                 this.inventory[i].equiped = false;
             }
         }
     }
     equipWeapon(weapon){
         this.unequipWeapons();
+        this.equiped = weapon;
         weapon.equiped = true;
+    }
+
+    coolGuns(){
+        for (let i = 0; i < this.inventory.length; i++){
+            if (this.inventory[i].type === "weapon"){
+                if(this.inventory[i].coolDown > 0)this.inventory[i].coolDown -= framerate/1000;
+            }
+        }
     }
 }
 
@@ -144,15 +155,49 @@ class gun extends weapon{
         this.fireRate = fireRate;
         this.coolDown = -1;
         this.bulletVelocity = 5;
+        this.spread = Math.max(0.05,Math.min(0.2,1/fireRate));
     }
 
     attack(author,x,y,xdir,ydir){
         if (this.coolDown < 0){
             this.coolDown = this.fireRate;
+            xdir += this.getSpread();
+            ydir += this.getSpread();
             let bullet = new Bullet(author,x,y,xdir*this.bulletVelocity,ydir*this.bulletVelocity,this.damage);
             drawArrayA.push(bullet);
         }
-        this.coolDown -= framerate/1000;
+
+    }
+
+    getSpread(){
+        let diff = getRandomfloat(this.spread) - (this.spread/2);
+        return diff;
+    }
+}
+
+class shotgun extends gun{
+    constructor(name,damage,fireRate,rounds){
+        super(name,damage,fireRate);
+        this.rounds = rounds;
+    }
+
+    attack(author,x,y,xdir,ydir){
+        if (this.coolDown < 0){
+            this.coolDown = this.fireRate;
+            let OriginXDir = xdir;
+            let OriginYDir = ydir;
+            for(let slug = 0; slug < this.rounds;slug ++) {
+                xdir = OriginXDir + this.getSpread();
+                ydir = OriginYDir + this.getSpread();
+                let bullet = new Bullet(author, x, y, xdir * this.bulletVelocity, ydir * this.bulletVelocity, this.damage);
+                drawArrayA.push(bullet);
+            }
+        }
+    }
+
+    getSpread(){
+        let diff = getRandomfloat(this.spread) - (this.spread/2);
+        return diff;
     }
 }
 
@@ -231,6 +276,21 @@ class NPC{
         this.hostileTo = [];
         this.health = 20+getRandomInt(20);
         this.weapon = null;
+        this.inventory = [];
+    }
+
+
+    unequipWeapons(){
+        for (let i = 0; i < this.inventory.length; i++){
+            if (this.inventory[i].type === "weapon"){
+                this.inventory[i].weapon = false;
+            }
+        }
+    }
+    equipWeapon(weapon){
+        this.unequipWeapons();
+        this.weapon = weapon;
+        weapon.equiped = true;
     }
 
     mug(){
@@ -301,13 +361,14 @@ class NPC{
     }
 
     barter(){
-
         if (this.likes <= -50){
             notify('NPC dislikes you too much to trade');
-        }
-        if (this.fear > 50){
+            return;
+        } else if (this.fear > 50){
             notify('NPC is too afraid of you to trade');
+            return;
         }
+        openMenu("Barter")
     }
 
     duel(){
@@ -376,6 +437,7 @@ class NPC{
 
             }else if (this.weapon.style === "range") {
                 //attack with ranged weapon
+                if(this.weapon.coolDown > 0) this.weapon.coolDown -= framerate/1000;
                 this.moveToShootPlayer();
                 this.shootPlayer();
             }
@@ -419,7 +481,6 @@ class NPC{
         else if (ydiff < -50) ydir = 1;
 
         if (xdir * ydir !== 0)return;
-
 
         this.weapon.attack(this,this.xpos,this.ypos,xdir,ydir);
     }
@@ -702,6 +763,7 @@ let fNamesNP = [{'Abigail':'AbbieAbbyGailNabby'},{'Ada':'Adie'},{'Adelaide':'Add
 window.onload = function(){
   initGame();
   setInterval(game,1000/framerate);
+
 };
 /*
 canvas.onkeyup = function(e){
@@ -783,7 +845,6 @@ function pointInsidePlayer(point){
 }
 
 function pointInside(point,object){
-
     let xMin = object.xpos;
     let xMax = object.xpos+object.width;
     let result = between(point[0],xMin,xMax);
@@ -834,6 +895,10 @@ function getRandomInt(max){
   return Math.floor(Math.random() * Math.floor(max));
 }
 
+function getRandomfloat(max){
+    return Math.random() * max;
+}
+
 function coinFlip(){
     return Math.floor(Math.random() * Math.floor(2));
 }
@@ -849,14 +914,18 @@ function getMousePos(canvas, evt) {
 function initGame(){
 
     let pistol = new gun("Pistol",10,2);
-    playerInfo.weapon = pistol;
     you.getItem(pistol);
 
-    let gun1 = new gun("Machine Gun",2,0.5);
-    you.getItem(gun1);
+    let minigun = new gun("Machine Gun",2,0.1);
+    you.getItem(minigun);
 
-    let gun2 = new gun("Sniper rifle",50,5);
-    you.getItem(gun2);
+    let sniper = new gun("Sniper rifle",50,5);
+    you.getItem(sniper);
+
+    let spazz = new shotgun("Shotgun",2,5,8);
+    you.getItem(spazz);
+
+    you.equipWeapon(pistol);
 
     drawArrayA.push(new Coin(1,100,100));
 
@@ -868,16 +937,19 @@ function initGame(){
     }
 
     for (let i = 0; i < gameComplexity/2; i ++){
-        let NPCpistol = new gun("Pistol",5,3);
+        let NPCgun = randomWeapon();
         let newNPC  = new NPC();
-        if (coinFlip())newNPC.weapon = NPCpistol;
+        //if (coinFlip()){
+            newNPC.inventory.push(NPCgun);
+            newNPC.equipWeapon(NPCgun);
+        //}
 
         drawArrayA.push(newNPC);
     }
 }
 
 function game(){
-  move();
+  if(!gamePaused)move();
   draw(drawArrayA);
   timer();
   //mouse();
@@ -938,9 +1010,29 @@ function processPlayer(){
 
 }
 
-
-
 let startMenuIndex = 0;
+
+function randomWeapon(){
+    let damage = getRandomInt(8)+2;
+    let fireRate = getRandomInt(3)+1;
+    let slugs = getRandomInt(4)+3;
+    let weapon = null;
+    let randNum = getRandomInt(3);
+    switch(randNum){
+        case 0://shotgun
+            weapon = new shotgun("Shotgun",damage,fireRate,slugs);
+            break;
+        case 1://hand gun
+            weapon = new gun("Handgun",damage,fireRate);
+            break;
+        case 2://large gun
+            fireRate = getRandomInt(2)+0.2;
+            weapon = new gun("Large gun",damage*2,fireRate);
+            break;
+    }
+    return weapon;
+}
+
 
 function menu(){
 
@@ -988,18 +1080,20 @@ function menu(){
       startMenuIndex = 0;
     }
 
-    if(menuDetails.type === "Build"){
-      if(menuDetails.index < 0 ) menuDetails.index = buildItems.length -1;
-        menuDetails.index = menuDetails.index % buildItems.length;
-    }
+
+    if(menuDetails.index < 0 ) menuDetails.index = menuDetails.items.length -1;
+    menuDetails.index = menuDetails.index % menuDetails.items.length;
+
 
   }
 }
+
+
 function inventory(){
     let selected = menuDetails.items[menuDetails.index];
     if (selected.type === "weapon"){
         you.equipWeapon(selected);
-        playerInfo.weapon = selected;
+        you.equiped = selected;
     }
     closeMenu();
 }
@@ -1024,12 +1118,16 @@ function hitPlayer(damage,x,y){
     playerInfo.health -= damage;
     player.xVel += x;
     player.yVel += y;
-    console.log("wow thats alot of damage");
     if (playerInfo.health < 0)playerDie()
 }
 
 function playerDie(){
-    console.log("Player dead");
+    pauseGame();
+    gameOver();
+}
+
+function pauseGame(){
+    gamePaused = true;
 }
 
 function talkMenu(){
@@ -1300,34 +1398,9 @@ function getRandPlacement(pos){
 }
 
 function randWait(){
-    return Math.random() * Math.floor(5);
+    return Math.random() * Math.floor(2);
 }
 
-function getRandShake(pos){
-    return Math.floor(Math.random() * Math.floor(8))-4  +pos;
-}
-
-function hit(thing){
-    if (thing.health !== undefined){
-        thing.health -= playerInfo.attack;
-    }
-    thing.attacked = 3;
-    if (thing.attacked % 3 === 0)  thing.xvel -= thing.attacked/8.5;
-    thing.xpos += thing.attacked;
-    if (thing.attacked % 3 === 0)  thing.yvel += thing.attacked/8.5;
-    thing.ypos -= thing.attacked;
-}
-
-function kill(thing){//spawns whatever is needed when an item is destroyed
-  let name = thing.name;
-  let type = thing.sType;
-  let reward = thing.stage*5;
-  let x = thing.xpos;
-  let y = thing.ypos;
-  if (type === "tree"){
-    spawncoins(x,y,reward);
-  }
-}
 
 function spawncoins(x,y,value){
   let xpos = getRandPlacement(x);
@@ -1384,10 +1457,11 @@ function pointInObject(point,object) {
 
 function movePlayer(){
 
-	player.xPos += player.xVel;
-  player.yPos += player.yVel;
+    you.coolGuns();
 
-	player.shoottimer -= 0.1;
+    player.xPos += player.xVel;
+    player.yPos += player.yVel;
+    player.shoottimer -= 0.1;
 
   if (Math.abs(player.xVel) > 0.1){
     player.xVel = player.xVel/1.1;
@@ -1450,7 +1524,7 @@ function shoot(shoot_xvel, shoot_yvel){
 	let shootx = player.xPos + 5;
 	let shooty = player.yPos + 10;
 
-    playerInfo.weapon.attack('player',shootx,shooty,shoot_xvel,shoot_yvel);
+    you.equiped.attack('player',shootx,shooty,shoot_xvel,shoot_yvel);
 }
 
 function closeMenu(){
@@ -1485,7 +1559,6 @@ function drawMenu(){
         //display items
         board.font = "22px VT323";
         menuDetails.items = you.inventory;
-        console.log(you.inventory);
         menuHeight += 35* menuDetails.items.length
     }
 
@@ -1505,6 +1578,13 @@ function drawMenu(){
 
         menuHeight += 35* menuDetails.items.length + 90;
         innerHeight += 35* menuDetails.items.length;
+    }
+
+    if (menuDetails.type === "Barter"){
+        //display items
+        board.font = "22px VT323";
+        menuDetails.items = menuDetails.person.inventory;
+        menuHeight += 35* menuDetails.items.length
     }
 
     board.fillStyle = "#424242";
@@ -1556,6 +1636,7 @@ function displayItems(){
 
         board.fillStyle = "#000000";
         if (menuDetails.type === "Inventory") printMenuItem(menuDetails.items[i].name,i);
+        else if (menuDetails.type === "Barter") printMenuItem(menuDetails.items[i].name,i);
         else if (menuDetails.items[i][1] === undefined)printMenuItem(menuDetails.items[i][0],i);
         else printMenuItem(menuDetails.items[i][0] + " - " + menuDetails.items[i][1],i);
     }
@@ -1595,16 +1676,36 @@ function notify(message){
     messager.timer = 5;
 }
 
+function gameOver(){
+    player.dead = true;
+}
+
+function gameOverScreen(){
+    board.fillStyle = "#101010";
+    board.fillRect(0,0,canvas.width,150);
+    board.fillRect(0,canvas.height-150,canvas.width,150);
+
+    board.font = "96px VT323";
+    board.fillStyle = "#eee";
+    board.textAlign = "center";
+    board.fillText("You Died!", canvas.width/2, 96);
+}
+
 function drawOverlay(){
 
+    if (player.dead === true){
+        gameOverScreen()
+        return
+    }
     board.font = "20px VT323";
 
     board.textAlign = "left";
     board.fillText(playerInfo.coins + " coins",20,25);
 
     let weapon = "Nothing";
-    if (playerInfo.weapon) weapon = playerInfo.weapon.name;
-    board.fillText(playerInfo.weapon.name,20,canvas.height-20);
+    if (you.equiped) weapon = you.equiped.name;
+    board.fillText(you.equiped.name,20,canvas.height-20);
+
 
 
     if (player.duelTimer > 0){
@@ -1621,6 +1722,8 @@ function drawOverlay(){
         board.textAlign = "center";
         board.fillText(text, canvas.width/2, 96);
     }
+
+
     board.textAlign = "left";
     let haelthPercentage = playerInfo.health/playerInfo.maxHealth;
     board.fillStyle = "#FF2222";
