@@ -17,22 +17,43 @@ let messager = {text:"", timer:0,urgent:true};
 let camera = {xPos:xDiff,yPos:yDiff,yVel:0,xVel:0};
 let player = {xPos:20,yPos:20,yVel:0,xVel:0,shoottimer:0,width:20,height:30};
 let playerInfo = {coins:100, attackCoolDown:0,attack:10,health:10,maxHealth:10,weapon:null};
-
+let currentScreen = null;
+let world = {};
+let worldX = 0;
+let worldY = 0;
 
 class Player{
     constructor(){
         this.inventory = [];
         this.equiped = null;
     }
+
     getItem(item){
+        /*  let exists = false;
+            for (let i = 0; i < this.inventory.length;i++){
+                if (this.inventory[i][0] === item){
+                    this.inventory[i][1] += 1;
+                    exists = true;
+                    break;
+                }
+            }*/
+        this.inventory.push(item);
+    }
+
+    addToInv(item){
+        this.getItem(item);
+        this.equipWeapon(this.equiped);
+    }
+
+    removeFromInv(item){
+        if (this.equiped === item) this.equiped = null;
         let exists = false;
         for (let i = 0; i < this.inventory.length;i++){
-            if (this.inventory[i][0] === item){
-                this.inventory[i][1] += 1;
-                exists = true;
+            if (this.inventory[i] === item){
+                this.inventory.splice(i,1);
+                break;
             }
         }
-        if (!exists)this.inventory.push(item);
     }
 
     unequipWeapons(){
@@ -42,11 +63,14 @@ class Player{
             }
         }
     }
+
     equipWeapon(weapon){
         this.unequipWeapons();
         this.equiped = weapon;
         weapon.equiped = true;
     }
+
+
 
     coolGuns(){
         for (let i = 0; i < this.inventory.length; i++){
@@ -123,7 +147,6 @@ class Keyboard{
 
         this.keyOn[num] = this.key[num] && !this.keyHold[num];
     }
-
 }
 
 let keyboard = new Keyboard();
@@ -138,7 +161,18 @@ class weapon{
         this.fireRate = fireRate;
         this.coolDown = 0;
         this.equiped = false;
+        this.value = this.getValue()
     }
+
+    getValue(){
+        let result = 5;
+        result += this.damage * this.fireRate * (8 +getRandomInt(3));
+        if (this.style === "range") result *= 2;
+        if (!isNaN(this.rounds)) result *= 1.5;
+        result = Math.floor(result);
+        return result
+    }
+
 
     attack(){
 
@@ -148,7 +182,7 @@ class weapon{
 class gun extends weapon{
     constructor(name,damage,fireRate){
         super(name,damage,fireRate);
-        this.name = name;
+        this.name = this.createName();
         this.type = "weapon";
         this.style = "range";
         this.damage = damage;
@@ -167,6 +201,29 @@ class gun extends weapon{
             drawArrayA.push(bullet);
         }
 
+    }
+    createName(){
+        let result = this.gunSize();
+        if (this.fireRate<0.5) result += " minigun";
+        else if (this.fireRate<1) result += " machine gun";
+        else if (this.fireRate < 3) result += " handgun";
+        else if (this.fireRate < 4) result += " revolver";
+        else if (this.fireRate < 5) result += " rifle";
+        else  result += " sniper";
+
+        return result.trim()
+    }
+
+    gunSize(){
+        let result = "";
+        if (this.damage < 2)  result += " airsoft";
+        else if (this.damage < 4)  result += " peashooter";
+        else if (this.damage < 8)  result += " small";
+        else if (this.damage < 16)  result += " medium";
+        else if (this.damage < 32)  result += " large";
+        else if (this.damage < 64)  result += " massive";
+        else if (this.damage < 128)  result += " 'The Beast'";
+        return result
     }
 
     getSpread(){
@@ -199,6 +256,11 @@ class shotgun extends gun{
         let diff = getRandomfloat(this.spread) - (this.spread/2);
         return diff;
     }
+
+    createName(){
+        let result = this.gunSize();
+        return (result + " shotgun").trim();
+    }
 }
 
 class Bullet{
@@ -224,7 +286,7 @@ class Bullet{
             if (block.type === "AI"){
                 if (collidesWith(this,block)){
                     if (block === this.author)continue;
-                    block.hit(this.damage);
+                    block.hit(this.damage,this.author);
                     this.life = 0;
                 }
             }
@@ -243,6 +305,41 @@ class Bullet{
         this.checkCollisions();
 
         return this.life > 0
+    }
+
+}
+
+class localMap{
+    constructor(xpos,ypos) {
+        this.itemArray = [];
+        this.xpos = xpos;
+        this.ypos = ypos;
+        this.backgroundColor = "#9CCC65";
+        this.size = 1000;
+        this.complexity = 10;
+    }
+
+    generate(){
+        for (let i = 0; i < gameComplexity; i ++){
+            let x = getRandomInt(this.size*2)-this.size;
+            let y = getRandomInt(this.size*2)-this.size;
+            let filler = new Box(x,y,'box');
+            this.itemArray.push(filler);
+        }
+
+        for (let i = 0; i < this.complexity/2; i ++){
+            let NPCgun = randomWeapon();
+            let newNPC  = new NPC();
+            newNPC.inventory.push(NPCgun);
+            newNPC.equipWeapon(NPCgun);
+
+            this.itemArray.push(newNPC);
+        }
+
+        for (let i = 0; i < gameComplexity/2; i ++){
+            let newNPC  = new Wolf();
+            this.itemArray.push(newNPC);
+        }
     }
 
 }
@@ -287,14 +384,42 @@ class NPC{
             }
         }
     }
+
     equipWeapon(weapon){
         this.unequipWeapons();
         this.weapon = weapon;
         weapon.equiped = true;
     }
 
-    mug(){
+    getItem(item){
+    /*  let exists = false;
+        for (let i = 0; i < this.inventory.length;i++){
+            if (this.inventory[i][0] === item){
+                this.inventory[i][1] += 1;
+                exists = true;
+                break;
+            }
+        }*/
+        this.inventory.push(item);
+    }
 
+    addToInv(item){
+        this.getItem(item);
+        this.equipWeapon(this.weapon);
+    }
+
+    removeFromInv(item){
+        if (this.weapon === item) this.weapon = null;
+        let exists = false;
+        for (let i = 0; i < this.inventory.length;i++){
+            if (this.inventory[i] === item){
+                this.inventory.splice(i,1);
+                break;
+            }
+        }
+    }
+
+    mug(){
         if (this.fear > 20){
             //successful mugging
             this.say("Please dont hurt me");
@@ -368,7 +493,8 @@ class NPC{
             notify('NPC is too afraid of you to trade');
             return;
         }
-        openMenu("Barter")
+        if (this.inventory.length == 0) this.say("I dont have anything to trade");
+        else openMenu("Barter")
     }
 
     duel(){
@@ -417,8 +543,12 @@ class NPC{
         this.color = "#ff3333"
     }
 
-    act() {
+    makeHostileTo(person){
+        this.hostileTo.push(person);
+        this.speed = 1.6;
+    }
 
+    act() {
         if (this.countDownTimer > 0){
             this.countDownTimer -= framerate/1000;
             return
@@ -441,6 +571,19 @@ class NPC{
                 this.moveToShootPlayer();
                 this.shootPlayer();
             }
+        } else {
+            //attacking NPC
+            if (this.weapon === null) {
+                //attack melee
+                this.MeleeNPC(this.hostileTo[0])
+
+            }else if (this.weapon.style === "range") {
+                //attack with ranged weapon
+                if(this.weapon.coolDown > 0) this.weapon.coolDown -= framerate/1000;
+                this.moveToShootNPC(this.hostileTo[0]);
+                this.shootNPC(this.hostileTo[0]);
+            }
+            if(this.hostileTo[0].health < 0)this.hostileTo.splice(0,1);
         }
     }
 
@@ -449,8 +592,18 @@ class NPC{
         this.moveTowardsTarget();
         if (collidesWithPlayer(this)){
             hitPlayer(5,this.xvel,this.yvel);
-            this.xvel = -this.xvel*2
-            this.yvel = -this.yvel*2
+            this.xvel = -this.xvel*2;
+            this.yvel = -this.yvel*2;
+        }
+    }
+
+    MeleeNPC(npc){
+        this.setTarget(npc.xpos, npc.ypos);
+        this.moveTowardsTarget();
+        if (collidesWith(this,npc)){
+            npc.hit(5,this);
+            this.xvel = -this.xvel*2;
+            this.yvel = -this.yvel*2;
         }
     }
 
@@ -467,9 +620,40 @@ class NPC{
         }
     }
 
+    moveToShootNPC(npc){
+        let xdiff = this.xpos - npc.xpos;
+        let ydiff = this.ypos - npc.ypos;
+
+        if (Math.abs(xdiff) < Math.abs(ydiff)){
+            if (xdiff < -15) this.xvel = this.speed;
+            else if (xdiff > 15) this.xvel = -this.speed;
+        }else{
+            if (ydiff < -15) this.yvel = this.speed;
+            else if (ydiff > 15) this.yvel = -this.speed;
+        }
+    }
+
     shootPlayer(){
         let xdiff = this.xpos - player.xPos;
         let ydiff = this.ypos - player.yPos;
+
+        let xdir = 0;
+        let ydir = 0;
+
+        if (xdiff > 50) xdir = -1;
+        else if (xdiff < -50) xdir = 1;
+
+        if (ydiff > 50) ydir = -1;
+        else if (ydiff < -50) ydir = 1;
+
+        if (xdir * ydir !== 0)return;
+
+        this.weapon.attack(this,this.xpos,this.ypos,xdir,ydir);
+    }
+
+    shootNPC(npc){
+        let xdiff = this.xpos - npc.xpos;
+        let ydiff = this.ypos - npc.ypos;
 
         let xdir = 0;
         let ydir = 0;
@@ -500,6 +684,8 @@ class NPC{
     }
 
     roam(){
+        this.color = "#b20f5c";
+        this.speed = 1;
         if (this.ywait < 0 && Math.abs(this.ydest - this.ypos) < 1) this.ywait = getRandomInt(50); //create random wait time
         if (this.ywait >= 0 && (Math.abs(this.ydest - this.ypos) < 1)){//if standing
             this.ywait -= framerate/1000;//wait
@@ -526,10 +712,17 @@ class NPC{
     die(){
         this.alive = false;
         spawncoins(this.xpos,this.ypos,this.money);
-
+        for (let i = 0; i < this.inventory.length; i ++){
+            let drop = new FloatingItem(this.xpos,this.ypos);
+            drop.makeItem(this.inventory[i]);
+            drawArrayA.push(drop);
+        }
     }
 
-    hit(damage){
+    hit(damage,from){
+        if (from === "player"&&coinFlip()) this.makeHostile();
+        if (from !== "player"&&coinFlip()) this.makeHostileTo(from);
+
         this.health -= damage;
         this.attacked = 3;
         if (this.attacked % 3 === 0)  this.xvel -= this.attacked/8.5;
@@ -538,6 +731,57 @@ class NPC{
         this.ypos -= this.attacked;
         if (this.health < 0)this.die();
     }
+}
+
+class Wolf extends NPC{
+    constructor() {
+        super();
+        this.width = 20;
+        this.height = 10;
+        this.speed = 1.5;
+        this.money = getRandomInt(5);
+    }
+
+    say(words){
+        if (this.hovered < 0.1) {
+            if (coinFlip()) this.words = 'Woof';
+            else this.words = 'Bork';
+            this.hovered = 3;
+        }
+    }
+
+    interupt(whatToSay){
+        if (this.hovered < 0.1) {
+            if (coinFlip()) this.words = 'Woof';
+            else this.words = 'Bork';
+            this.hovered = 3;
+        }
+    }
+
+    makeHostile(){
+        this.hostileTo.push("player");
+        this.speed = 2;
+        this.color = "#ff3333"
+    }
+
+    getItem(item) {
+        return;
+    }
+
+    moveTowardsTarget(){
+        if (Math.abs(this.ydest - this.ypos) > 1) this.yvel = this.speed * ((this.ydest - this.ypos) / Math.abs(this.ydest - this.ypos));
+        if (Math.abs(this.xdest - this.xpos) > 1) this.xvel = this.speed *((this.xdest - this.xpos) / Math.abs(this.xdest - this.xpos));
+
+        if (Math.abs(this.ydest - this.ypos) < 1){
+            this.ypos = this.ydest;
+            this.yvel = 0;
+        }
+        if (Math.abs(this.xdest - this.xpos) < 1) {
+            this.xpos = this.xdest;
+            this.xvel = 0;
+        }
+    }
+
 }
 
 class FloatingItem {
@@ -552,6 +796,13 @@ class FloatingItem {
         this.color = "#FF0000";
         this.width = 10;
         this.height = 10;
+        this.contains = null;
+    }
+
+    makeItem(item){
+        if (item.color) this.color = item.color;
+        else this.color = "#000000";
+        this.contains = item;
     }
 
     floatTowardsPlayer(){
@@ -573,7 +824,7 @@ class FloatingItem {
         let xdiff = this.xpos - player.xPos;
         let ydiff = this.ypos - player.yPos;
         if(Math.abs(xdiff) < 10 && Math.abs(ydiff) < 10){
-            playerInfo.coins += this.value;
+            you.addToInv(this.contains);
             drawArrayA.splice(i,1);
         }
     }
@@ -593,8 +844,16 @@ class Coin extends FloatingItem{
         this.width = 10;
         this.height = 10;
     }
-}
 
+    checkCollected(i){
+        let xdiff = this.xpos - player.xPos;
+        let ydiff = this.ypos - player.yPos;
+        if(Math.abs(xdiff) < 10 && Math.abs(ydiff) < 10){
+            playerInfo.coins += this.value;
+            drawArrayA.splice(i,1);
+        }
+    }
+}
 
 class Block {
     constructor(x,y,name){
@@ -745,8 +1004,6 @@ class Box extends Block{
     }
 }
 
-
-
 let itemDictionary = [
     {name:"Apple Tree",   value:15, str:5,  sType:"tree", stage:0, life:0,  health:100},
     {name:"Oak Tree",     value:7,  str:5,  sType:"tree", stage:0, life:0,  health:100},
@@ -782,25 +1039,21 @@ canvas.onkeyup = function(e){
     keyboard.keyUp(e.keyCode);
 };
 
-
-
 canvas.onkeydown = function(e){
     e = e || event;
     keyboard.key[e.keyCode] = e.type === 'keydown';
     keyboard.keyDown(e.keyCode);
 };
 
-
 canvas.addEventListener('mousemove', function(evt) {
-  var mousePos = getMousePos(canvas, evt);
+  let mousePos = getMousePos(canvas, evt);
 
   mousex = mousePos.x;
   mousey = mousePos.y;
 }, false);
 
-
 function randName(gender){
-	if (gender == "m") return Object.keys(mNamesNP[getRandomInt(mNamesNP.length)]);
+	if (gender === "m") return Object.keys(mNamesNP[getRandomInt(mNamesNP.length)]);
   return "garry"
 	//return Object.keys(fNamesNP[getRandomInt(fNamesNP.length)])
 }
@@ -911,41 +1164,54 @@ function getMousePos(canvas, evt) {
   };
 }
 
+function saveMap(map){
+    let coordinates = worldX + "," + worldY;
+    world[coordinates] = map;
+}
+
+function enterMap(currentMap,map) {
+    saveMap(currentMap);
+    drawArrayA = map.itemArray;
+}
+
+function changeMaps(x,y){
+    let newX = worldX + x;
+    let newY = worldY + y;
+    let newCoordinates = newX + "," + newY;
+
+    let currentMap = getCurrentMap();
+    let newMap = world[newCoordinates];
+
+    if (newMap){
+        enterMap(currentMap,newMap);
+    }else{
+        newMap = new localMap(newX,newY);
+        newMap.generate();
+        enterMap(currentMap,newMap);
+        world[newCoordinates] = newMap;
+    }
+
+    if (newX === x) player.yPos = -player.yPos*0.9;
+    if (newY === y) player.xPos = -player.xPos*0.9;
+
+    worldX = newX;
+    worldY = newY;
+}
+
 function initGame(){
+    let currentMap = new localMap(0,0);
+    currentMap.generate();
+    drawArrayA = currentMap.itemArray;
+    saveMap(currentMap);
 
-    let pistol = new gun("Pistol",10,2);
-    you.getItem(pistol);
+    let starterGun = randomWeapon();
 
-    let minigun = new gun("Machine Gun",2,0.1);
-    you.getItem(minigun);
-
-    let sniper = new gun("Sniper rifle",50,5);
-    you.getItem(sniper);
-
-    let spazz = new shotgun("Shotgun",2,5,8);
-    you.getItem(spazz);
-
-    you.equipWeapon(pistol);
+    you.getItem(starterGun);
+    you.equipWeapon(starterGun);
 
     drawArrayA.push(new Coin(1,100,100));
 
-    for (let i = 0; i < gameComplexity; i ++){
-        let x = getRandomInt(mapbounds*2)-mapbounds;
-        let y = getRandomInt(mapbounds*2)-mapbounds;
-        let filler = new Box(x,y,'box');
-        drawArrayA.push(filler);
-    }
 
-    for (let i = 0; i < gameComplexity/2; i ++){
-        let NPCgun = randomWeapon();
-        let newNPC  = new NPC();
-        //if (coinFlip()){
-            newNPC.inventory.push(NPCgun);
-            newNPC.equipWeapon(NPCgun);
-        //}
-
-        drawArrayA.push(newNPC);
-    }
 }
 
 function game(){
@@ -969,7 +1235,7 @@ function startDuel(NPC){
 function timer(){
   ticker += 1
   if (ticker > framerate/2) {
-    timeNow = getTime()
+    timeNow = getTime();
     ticker = 0;
   }
 }
@@ -1064,6 +1330,7 @@ function menu(){
 
     if (menuDetails.type === "playerMenu")if (keyboard.keyIsPressed(69))playerMenu();
     if (menuDetails.type === "Inventory")if (keyboard.keyIsPressed(69))inventory();
+    if (menuDetails.type === "Barter")if (keyboard.keyIsPressed(69))barterMenu();
     if (menuDetails.type === "talk")if (keyboard.keyIsPressed(69))talkMenu();
     if (menuDetails.type === "chat")if (keyboard.keyIsPressed(69))chatMenu();
 
@@ -1083,7 +1350,7 @@ function menu(){
 
     if(menuDetails.index < 0 ) menuDetails.index = menuDetails.items.length -1;
     menuDetails.index = menuDetails.index % menuDetails.items.length;
-
+    if (isNaN(menuDetails.index))menuDetails.index = 0;
 
   }
 }
@@ -1098,7 +1365,23 @@ function inventory(){
     closeMenu();
 }
 
+function barterMenu(){
+    let selected = menuDetails.items[menuDetails.index];
+
+    if(playerInfo.coins >= selected.value){
+        playerInfo.coins -= selected.value;
+        menuDetails.person.coins += selected.value;
+        menuDetails.person.removeFromInv(selected);
+        you.addToInv(selected);
+        closeMenu();
+    }else{
+        menuDetails.person.say("You dont have enough money");
+    }
+
+}
+
 function playerMenu(){
+
     let selected = menuDetails.items[menuDetails.index][0];
     if (selected === "Close"){
         closeMenu()
@@ -1133,18 +1416,15 @@ function pauseGame(){
 function talkMenu(){
     let selected = menuDetails.items[menuDetails.index][0];
     let NPC = menuDetails.person;
-    if (selected === "Chat"){
-        NPC.chat();
-    }
-    if (selected === "Barter"){
-        NPC.barter()
-    }
-    if (selected === "Duel"){
-        NPC.duel()
-    }
-    if (selected === "Mug"){
-        NPC.mug();
-    }
+
+    if (selected === "Chat")NPC.chat();
+
+    if (selected === "Barter")NPC.barter();
+
+    if (selected === "Duel")NPC.duel();
+
+    if (selected === "Mug")NPC.mug();
+
     if (selected === "Bye")closeMenu();
 }
 
@@ -1232,6 +1512,7 @@ function buildMode(toBuild){
 }
 
 function toggleMenu(Type){
+    menuDetails.index = 0;
   if(menuDetails.type != ""){
       menuDetails.type = "";
   }else{
@@ -1271,23 +1552,17 @@ function actNPC(thing,i){
     if (interaction === false) return;
 
     if (interaction.type === "AI"){
-        thing.hovered = 2;
-        thing.words = "Hello " + thing.fName + " " + thing.lName;
+        thing.say( "Hello " + thing.fName + " " + thing.lName);
     }
 
     if (interaction.sType === "tree"){
-        thing.hovered = 2;
-        thing.words = "Nice " + interaction.fName;
+        thing.say( thing.words = "Nice " + interaction.fName);
     }
 
-    if (interaction.sType === "box"){
-        thing.hovered = 2;
-        thing.words = "Nice " + interaction.fName;
-    }
 }
 
 function talkWithPlayer(person){
-    menuDetails.index = 0;
+
     person.xdest = person.xpos;
     person.ydest = person.ypos;
     person.holt = true;
@@ -1302,6 +1577,7 @@ function talkTo(person){
 }
 
 function openMenu(toOpen){
+    menuDetails.index = 0;
     menuDetails.type = toOpen;
 }
 
@@ -1453,11 +1729,39 @@ function pointInObject(point,object) {
 	return false;
 }
 
+function getCurrentMap(){
+    let coordinates = worldX + "," + worldY;
+    console.log(coordinates);
+    return world[coordinates];
+}
 
+
+
+function isoutofBounds(){
+    let size = getCurrentMap().size;
+    if (player.xPos < -size){
+        changeMaps(-1,0);
+    }
+
+    if (player.xPos > size){
+        changeMaps(1,0);
+    }
+
+    if (player.yPos < -size){
+        changeMaps(0,-1);
+    }
+
+    if (player.yPos > size){
+        changeMaps(0,1);
+    }
+    return false
+}
 
 function movePlayer(){
 
     you.coolGuns();
+
+    if(isoutofBounds())console.log("true");
 
     player.xPos += player.xVel;
     player.yPos += player.yVel;
@@ -1542,6 +1846,9 @@ function drawMenu(){
     board.font = "22px VT323";
     let menuHeight = 5;
     let innerHeight = 5;
+    let etext = "select";
+
+
     if (menuDetails.type === "Build"){
       //display items
       menuDetails.items = buildItems;
@@ -1552,14 +1859,15 @@ function drawMenu(){
         //display items
         board.font = "22px VT323";
         menuDetails.items = [['Inventory'],['Skills'],['Stats'],['Close']];
-        menuHeight += 35* menuDetails.items.length
+        menuHeight += 35* menuDetails.items.length;
     }
 
     if (menuDetails.type === "Inventory"){
         //display items
         board.font = "22px VT323";
         menuDetails.items = you.inventory;
-        menuHeight += 35* menuDetails.items.length
+        menuHeight += 35* menuDetails.items.length;
+        displayItemStats(menuDetails.items[menuDetails.index]);
     }
 
     if (menuDetails.type === "talk"){
@@ -1584,14 +1892,16 @@ function drawMenu(){
         //display items
         board.font = "22px VT323";
         menuDetails.items = menuDetails.person.inventory;
-        menuHeight += 35* menuDetails.items.length
+        menuHeight += 35* menuDetails.items.length;
+        etext = "purchase";
+        displayItemStats(menuDetails.items[menuDetails.index]);
     }
 
     board.fillStyle = "#424242";
     board.fillRect(canvas.width-210, 10, 200, menuHeight);
 
     board.fillStyle = "#000000";
-    board.fillText("[e] select [q] exit" ,canvas.width-200,30+menuHeight);
+    board.fillText("[e] " + etext + " [q] exit" ,canvas.width-200,30+menuHeight);
 
     displayItems();
 
@@ -1646,6 +1956,26 @@ function printMenuItem(text,i){
     board.fillText(text, canvas.width - 200, 35 + 35 * i);
 }
 
+function displayItemStats(item){
+    board.fillStyle = "#424242";
+    board.fillRect(canvas.width-410, 10, 195, 158);
+    board.fillStyle = "#BDBDBD";
+    board.fillRect(canvas.width-406, 14, 187, 35);
+    board.fillRect(canvas.width-406, 53, 187, 80);
+    board.fillRect(canvas.width-406, 136, 187, 28);
+
+    board.fillStyle = "#000";
+    board.textAlign = "center";
+    board.fillText(item.name, canvas.width - 315, 36);
+    board.textAlign = "left";
+    board.fillText('Dmg: ' + item.damage, canvas.width - 400, 75);
+    board.fillText('Spd: ' + Math.max(10-item.fireRate), canvas.width - 400, 100);
+    board.fillText('Rounds: ' + item.rounds, canvas.width - 400, 125);
+    board.textAlign = "center";
+    board.fillText('Value: $'+item.value, canvas.width - 315, 156);
+    board.textAlign = "left";
+}
+
 function stringifyLike(amount){
     if (amount < -90){
         return 'Hates'
@@ -1680,21 +2010,63 @@ function gameOver(){
     player.dead = true;
 }
 
-function gameOverScreen(){
-    board.fillStyle = "#101010";
-    board.fillRect(0,0,canvas.width,150);
-    board.fillRect(0,canvas.height-150,canvas.width,150);
+class screen{
+    constructor(title,type){
+        this.title = title;
+        this.background = null;
+        this.menuItems = [];
+        this.type = type;
+        this.age = 0;
+        this.subtitle = "";
+    }
 
-    board.font = "96px VT323";
-    board.fillStyle = "#eee";
-    board.textAlign = "center";
-    board.fillText("You Died!", canvas.width/2, 96);
+    display(){
+        let drop = 170;
+        if (this.type === "drop") {
+            this.age += framerate / 1000;
+            drop = this.age * 40;
+            drop = Math.min(drop, 170);
+        }
+
+        board.fillStyle = "#101010";
+        board.fillRect(0,0,canvas.width,100 + drop);
+        board.fillRect(0,canvas.height-100-drop*1.5,canvas.width,100+drop*1.5);
+
+        board.font = "96px VT323";
+        board.fillStyle = "#eee";
+        board.textAlign = "center";
+        board.fillText(this.title, canvas.width/2, drop);
+
+        board.font = "42px VT323";
+        board.fillStyle = "#ddd";
+        if (this.type === "drop"&& drop == 170) {
+            board.fillText(this.subtitle, canvas.width/2, 250);
+        }else if (this.type !== "drop"){
+            board.fillText(this.subtitle, canvas.width/2, 250);
+        }
+    }
+
+    addSubTitle(text){
+        this.subtitle = text;
+    }
+
+    addMenuOption(text){
+        this.menuItems.push([text]);
+    }
+}
+
+function gameOverScreen(){
+    if (currentScreen === null){
+        currentScreen = new screen("You Died!","drop");
+        currentScreen.addSubTitle("Better luck next time");
+        currentScreen.addMenuOption("Exit");
+    }
 }
 
 function drawOverlay(){
 
     if (player.dead === true){
-        gameOverScreen()
+        gameOverScreen();
         return
     }
     board.font = "20px VT323";
@@ -1715,8 +2087,8 @@ function drawOverlay(){
         board.fillRect(0,canvas.height-150,canvas.width,150);
 
 
-        let text = Math.floor(player.duelTimer/2)
-        if (text === 0)text = "DUEL"
+        let text = Math.floor(player.duelTimer/2);
+        if (text === 0)text = "DUEL";
         board.font = "96px VT323";
         board.fillStyle = "#eee";
         board.textAlign = "center";
@@ -1767,7 +2139,6 @@ function draw(drawArray){
       20,20);
   }
 
-
   board.fillStyle = "#212121";
   board.font = "24px VT323";
 
@@ -1779,10 +2150,8 @@ function draw(drawArray){
     board.fillText(messager.text,canvas.width/2,100);
   }
 
-
-
   board.fillRect(player.xPos + camera.xPos,player.yPos + camera.yPos,20,30);
-
+  if(currentScreen)currentScreen.display();
   drawMenu();
   drawOverlay();
 
