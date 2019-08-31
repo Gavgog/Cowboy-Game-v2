@@ -1,0 +1,290 @@
+<HTML>
+<head>
+</head>
+<body>
+<canvas id="gameCanvas" width="800px" height="600px" tabindex="0"></canvas>
+<script>
+
+playerimg = new Image();
+playerimg.src = 'media/player.png';
+
+players1 = new Image();
+players1.src = 'media/player2.png';
+
+players2 = new Image();
+players2.src = 'media/player3.png';
+
+cactus1 = new Image();
+cactus1.src = 'media/cactus1.png';
+
+cactus2 = new Image();
+cactus2.src = 'media/cactus2.png';
+
+barrel = new Image();
+barrel.src = 'media/barrel.png';
+
+npc1 = new Image();
+npc1.src = 'media/npc1.png';
+
+npc2 = new Image();
+npc2.src = 'media/npc2.png';
+
+var canvas;
+var canvasContext;
+var framerate = 60;
+canvas = document.getElementById('gameCanvas');
+canvasContext = canvas.getContext('2d');
+canvas.focus();
+canvas.tabIndex = 0;
+
+var playerx = 20;
+var playery = 20;
+var playerx_vel = 1;
+var playery_vel = 1;
+
+
+var key = {};
+var maxspeed = 4;
+var background_array = [[60,40,1]];
+var npc_array = [[60,40,10,90,1,0]];
+var shootie_array = [];
+var badie_array = [];
+var biomesize = 1000;
+var bulletlife = 90;
+var bulletspeed = 6;
+var bcd = 30;
+var bullettimer = 0;
+var npcmpvespeed = 1;
+
+var playerstep = 0;
+var playerstepcount = 0;
+
+  window.onload = function(){
+
+	loadGame();
+	setInterval(game,1000/framerate);
+  }
+
+  function loadGame(){
+  var type = Math.round(Math.random()*2);
+    for (var i = 0; i < 40; i ++) {
+      type = Math.round(Math.random()*2);
+  	  background_array[i] = [(Math.random()*biomesize*2) - biomesize,(Math.random()*biomesize*2) - biomesize,type];
+    }
+    for (var i = 0; i < 5; i ++) {
+  	  npc_array[i] = [(Math.random()*biomesize*2) - biomesize,(Math.random()*biomesize*2) - biomesize,(Math.random()*biomesize*2) - biomesize,(Math.random()*biomesize*2) - biomesize,1,0];
+    }
+  }
+
+  canvas.onkeydown = canvas.onkeyup = function(e){
+    var e = e || event;
+    key[e.keyCode] = e.type == 'keydown';
+  };
+
+  function game(){
+
+	playerpos();
+	draw();
+	keyPush();
+  npc();
+  }
+
+  function npc() {
+    for (var npci = 0; npci < npc_array.length; npci ++) {
+      npc_array[npci][5] ++;
+      for(var checkb = 0; checkb < shootie_array.length; checkb++) {
+
+        /*if ((shootie_array[checkb][0] > npc_array[npci][0]-30) & (shootie_array[checkb][0] < npc_array[npci][0])){
+          alert("die");
+        }*/
+      }
+      //console.log(npc_array[npci][5]);
+      if (npc_array[npci][5] > 10) {//npc takes step
+          npc_array[npci][5] = 0;
+          if (npc_array[npci][4] == 0) {
+            npc_array[npci][4] = 1;
+          } else {
+            npc_array[npci][4] = 0;
+          }
+        }
+
+          if (npc_array[npci][0] < npc_array[npci][2]){
+            npc_array[npci][0] ++;
+            if ((npc_array[npci][0] - npc_array[npci][2]) > -1){
+                npc_array[npci][2] = newdestination();
+            }
+          }else{
+            npc_array[npci][0] --;
+            if ((npc_array[npci][0] - npc_array[npci][2]) < 1){
+                npc_array[npci][2] = newdestination();
+            }
+          }
+
+          if (npc_array[npci][1] < npc_array[npci][3]){
+            npc_array[npci][1] ++;
+            if ((npc_array[npci][1] - npc_array[npci][3]) > -1){
+                npc_array[npci][3] = newdestination();
+            }
+          }else{
+            npc_array[npci][1] --;
+            if ((npc_array[npci][1] - npc_array[npci][3]) < 1){
+                npc_array[npci][3] = newdestination();
+            }
+          }
+
+
+    }
+
+  }
+
+function newdestination(){
+  var newplace = (Math.random()*biomesize);
+  return newplace;
+}
+
+  function playerpos() {
+
+	if (playerx_vel < 0) {
+    playerstepcount ++;
+		if (playerx_vel < -maxspeed) {
+			playerx_vel = -maxspeed;
+		} else {
+			playerx_vel += 0.5;
+		}
+	} else if (playerx_vel > 0) {
+    playerstepcount ++;
+		if (playerx_vel > maxspeed) {
+			playerx_vel = +maxspeed;
+		} else {
+			playerx_vel -= 0.5;
+		}
+	}
+	if (playery_vel < 0) {
+    playerstepcount ++;
+		if (playery_vel < -maxspeed) {
+			playery_vel = -maxspeed;
+		} else {
+			playery_vel += 0.5;
+		}
+	} else if (playery_vel > 0) {
+    playerstepcount ++;
+		if (playery_vel > maxspeed) {
+			playery_vel = +maxspeed;
+		} else {
+			playery_vel -= 0.5;
+		}
+	}
+
+  if ((playerx_vel == 0) & (playery_vel == 0)) {
+    playerstepcount = 0;
+    playerstep = 0;
+  }
+  if (playerstepcount > 10) {
+    playerstepcount = 0;
+    if (playerstep <= 1) {
+      playerstep ++;
+    } else if (playerstep == 2) {
+      playerstep --;
+    }
+  }
+  console.log(playerstep);
+
+	playerx += playerx_vel;
+	playery += playery_vel;
+
+	if (bullettimer > 0) {
+	 bullettimer -= 1;
+	 }
+
+  }
+
+  function shoot(direction){
+    if (bullettimer < 2) {
+	  switch (direction) {
+
+		case 'up':
+		shootie_array.push([0,-bulletspeed,playerx+410,playery+309,bulletlife*60/framerate]);
+		break;
+		case 'down':
+		shootie_array.push([0,bulletspeed,playerx+410,playery+309,bulletlife*60/framerate]);
+		break;
+		case 'right':
+		shootie_array.push([bulletspeed,0,playerx+415,playery+316,bulletlife*60/framerate]);
+		break;
+		case 'left':
+		shootie_array.push([-bulletspeed,0,playerx+415,playery+316,bulletlife*60/framerate]);
+		break;
+	  }
+	  bullettimer = bcd;
+  }
+
+  }
+
+  function draw(){
+	canvasContext.fillStyle = '#FFE082';
+	canvasContext.fillRect(0,0,canvas.width,canvas.height);
+
+
+	for (var i = 0; i < background_array.length; i++) {
+    switch (cactus1,background_array[i][2]) {
+
+    case (0):
+      canvasContext.drawImage(cactus1,background_array[i][0] - playerx, background_array[i][1] - playery,50,50);
+    break;
+    case (1):
+      canvasContext.drawImage(cactus2,background_array[i][0] - playerx, background_array[i][1] - playery,50,50);
+    break;
+    case (2):
+      canvasContext.drawImage(barrel,background_array[i][0] - playerx, background_array[i][1] - playery,40,50);
+    break;
+  }
+	}
+
+  for (var j = 0; j < npc_array.length; j++) {
+    if (npc_array[j][4] == 1) {
+      canvasContext.drawImage(npc1,npc_array[j][0] - playerx, npc_array[j][1] - playery,35,50);
+    } else {
+      canvasContext.drawImage(npc2,npc_array[j][0] - playerx, npc_array[j][1] - playery,35,50);
+    }
+
+  }
+
+	for (var x = 0; x < shootie_array.length; x++) {
+		canvasContext.fillStyle = '#202020';
+		shootie_array[x][2] += shootie_array[x][0];
+		shootie_array[x][3] += shootie_array[x][1];
+		shootie_array[x][4] -= 1;
+		if (shootie_array[x][4] < 0) {
+			shootie_array.splice(x, 1);
+		}
+    if (shootie_array.length == 0){break;}
+		canvasContext.fillRect(shootie_array[x][2] - playerx, shootie_array[x][3] - playery,3,3);
+	}
+  if (playerstep == 0){
+    canvasContext.drawImage(playerimg,395,295, 35, 50);
+  } else if(playerstep == 1){
+    canvasContext.drawImage(players1,395,295, 35, 50);
+  } else if(playerstep == 2){
+    canvasContext.drawImage(players2,395,295, 35, 50);
+  }
+  }
+
+
+  function keyPush(){
+
+		if (key[68]){playerx_vel += 2;}//move right
+		if (key[65]){playerx_vel -= 2;}//move left
+
+		if (key[87]){playery_vel -= 2;}//move up
+		if (key[83]){playery_vel += 2;}//move down
+
+		if (key[40]){shoot('down')}//shoot down
+		if (key[38]){shoot('up')}//shoot up
+		if (key[37]){shoot('left')}//shoot left
+		if (key[39]){shoot('right')}//shoot right
+}
+
+</script>
+<iframe style="display:none;" src="media/music.mp3"></iframe>
+</body>
+</HTML>

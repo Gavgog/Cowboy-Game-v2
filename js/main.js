@@ -15,17 +15,21 @@ let cameraMode = "Player";
 let messager = {text:"", timer:0,urgent:true};
 
 let camera = {xPos:xDiff,yPos:yDiff,yVel:0,xVel:0};
-let player = {xPos:20,yPos:20,yVel:0,xVel:0,shoottimer:0,width:20,height:30};
+let player = {xPos:20,yPos:20,yVel:0,xVel:0,shoottimer:0,width:30,height:40};
 let playerInfo = {coins:100, attackCoolDown:0,attack:10,health:10,maxHealth:10,weapon:null};
 let currentScreen = null;
 let world = {};
 let worldX = 0;
 let worldY = 0;
 
+let images = {};
+
 class Player{
     constructor(){
         this.inventory = [];
         this.equiped = null;
+        this.stepTimer = 3;
+        this.stepCount = 0;
     }
 
     getItem(item){
@@ -70,7 +74,26 @@ class Player{
         weapon.equiped = true;
     }
 
+    draw(){
+        this.stepTimer -= Math.abs(player.xVel * framerate/1000);
+        this.stepTimer -= Math.abs(player.yVel * framerate/1000);
 
+        let toDraw = images.playerimg;
+
+        if (this.stepTimer < 0){
+            this.stepTimer = 3;
+            if (this.stepCount === 1)this.stepCount = 0;
+            else this.stepCount = 1;
+        }
+
+        if (player.yVel+player.xVel !== 0){
+            if (this.stepCount === 1) toDraw = images.playerstep1;
+            else  toDraw = images.playerstep2;
+        }
+
+
+        board.drawImage(toDraw,player.xPos + camera.xPos,player.yPos + camera.yPos, player.width, player.height);
+    }
 
     coolGuns(){
         for (let i = 0; i < this.inventory.length; i++){
@@ -309,6 +332,54 @@ class Bullet{
 
 }
 
+class backgroundObject{
+    constructor(size) {
+        this.xpos = getRandomInt(size*2)-size;
+        this.ypos = getRandomInt(size*2)-size;
+        this.color = getGrassColor();
+        this.width = (getRandomInt(2)*3)+6;
+        this.height = 3;
+        this.special = playOdds(1/10);
+
+        if (this.special){
+
+            this.flowerColor = "#FBC02D";
+            this.flowerType = getRandomInt(3);
+            if (playOdds(1/3)) this.flowerColor = "#F5F5F5";
+            if (playOdds(1/3)) this.flowerColor = "#e53935";
+
+        }
+    }
+    draw(){
+        board.fillStyle = this.color;
+        board.fillRect(this.xpos+camera.xPos,this.ypos+camera.yPos,this.width,3);
+
+        if (this.special){
+            switch (this.flowerType) {
+                case 0:
+                    board.fillRect(this.xpos + camera.xPos + 3, this.ypos + camera.yPos - 3, 3, 3);
+                    board.fillRect(this.xpos + camera.xPos + 6, this.ypos + camera.yPos - 6, 3, 3);
+                    board.fillStyle = this.flowerColor;
+                    board.fillRect(this.xpos + camera.xPos + 9, this.ypos + camera.yPos - 9, 3, 3);
+                    break;
+                case 1:
+                    board.fillRect(this.xpos + camera.xPos + 3, this.ypos + camera.yPos - 3, 3, 3);
+                    board.fillRect(this.xpos + camera.xPos, this.ypos + camera.yPos - 6, 3, 3);
+                    board.fillStyle = this.flowerColor;
+                    board.fillRect(this.xpos + camera.xPos - 3, this.ypos + camera.yPos - 9, 3, 3);
+                    break;
+                case 2:
+                    board.fillRect(this.xpos + camera.xPos + 3, this.ypos + camera.yPos - 3, 3, 3);
+                    board.fillRect(this.xpos + camera.xPos + 3, this.ypos + camera.yPos - 6, 3, 3);
+                    board.fillStyle = this.flowerColor;
+                    board.fillRect(this.xpos + camera.xPos + 3, this.ypos + camera.yPos - 9, 3, 3);
+                    break;
+            }
+
+        }
+    }
+}
+
 class localMap{
     constructor(xpos,ypos) {
         this.itemArray = [];
@@ -317,9 +388,11 @@ class localMap{
         this.backgroundColor = "#9CCC65";
         this.size = 1000;
         this.complexity = 10;
+        this.backgroundArray = []
     }
 
     generate(){
+        this.generateBG();
         for (let i = 0; i < gameComplexity; i ++){
             let x = getRandomInt(this.size*2)-this.size;
             let y = getRandomInt(this.size*2)-this.size;
@@ -336,12 +409,151 @@ class localMap{
             this.itemArray.push(newNPC);
         }
 
+
         for (let i = 0; i < gameComplexity/2; i ++){
             let newNPC  = new Wolf();
             this.itemArray.push(newNPC);
         }
     }
 
+    drawFloor(){
+
+        for (let i = 0; i < this.backgroundArray.length;i++){
+            let item = this.backgroundArray[i];
+            item.draw();
+        }
+
+    }
+
+    generateBG(){
+        for (let i = 0; i < this.size/10;i++){
+            let item = new backgroundObject(this.size);
+            this.backgroundArray.push(item);
+        }
+
+    }
+
+}
+
+class wolfArea extends localMap{
+
+    constructor(xpos,ypos) {
+        super();
+        this.itemArray = [];
+        this.xpos = xpos;
+        this.ypos = ypos;
+        this.backgroundColor = "#9CCC65";
+        this.size = 1000;
+        this.complexity = 10;
+    }
+
+    generate(){
+
+        this.generateBG();
+
+        let x = getRandomInt(this.size*2)-this.size;
+        let y = getRandomInt(this.size*2)-this.size;
+        let filler = new Chest(x,y,'Chest',getRandomInt(100));
+        this.itemArray.push(filler);
+
+
+        for (let i = 0; i < this.complexity/2; i ++){
+            let newNPC  = new Wolf();
+            newNPC.makeHostile();
+            this.itemArray.push(newNPC);
+        }
+    }
+}
+
+class banditArea extends localMap{
+
+    constructor(xpos,ypos) {
+        super();
+        this.itemArray = [];
+        this.xpos = xpos;
+        this.ypos = ypos;
+        this.backgroundColor = "#9CCC65";
+        this.size = 1000;
+        this.complexity = 10;
+    }
+
+    generate(){
+
+        this.generateBG();
+
+        let x = getRandomInt(this.size*2)-this.size;
+        let y = getRandomInt(this.size*2)-this.size;
+        let filler = new Chest(x,y,'Chest',getRandomInt(100));
+        this.itemArray.push(filler);
+
+        for (let i = 0; i < this.complexity; i ++){
+            let x = getRandomInt(this.size*2)-this.size;
+            let y = getRandomInt(this.size*2)-this.size;
+            let filler = new Box(x,y,'box');
+            this.itemArray.push(filler);
+        }
+
+
+        for (let i = 0; i < this.complexity/3; i ++){
+            let NPCgun = randomWeapon();
+            let newNPC  = new NPC();
+            newNPC.inventory.push(NPCgun);
+            newNPC.equipWeapon(NPCgun);
+            newNPC.makeHostile();
+
+            this.itemArray.push(newNPC);
+        }
+
+    }
+}
+
+class townArea extends localMap{
+
+    constructor(xpos,ypos) {
+        super();
+        this.itemArray = [];
+        this.xpos = xpos;
+        this.ypos = ypos;
+        this.backgroundColor = "#9CCC65";
+        this.size = 1000;
+        this.complexity = 10;
+        this.texture = true;
+        this.backgroundArray = []
+    }
+
+
+
+    generate(){
+
+        this.generateBG();
+
+        let x = getRandomInt(this.size*2)-this.size;
+        let y = getRandomInt(this.size*2)-this.size;
+        let filler = new Chest(x,y,'Chest',getRandomInt(100));
+        this.itemArray.push(filler);
+
+        for (let i = 0; i < this.complexity; i ++){
+            let x = getRandomInt(this.size*2)-this.size;
+            let y = getRandomInt(this.size*2)-this.size;
+            let filler = new Box(x,y,'box');
+            this.itemArray.push(filler);
+        }
+
+
+        for (let i = 0; i < this.complexity/3; i ++){
+            let NPCgun1 = randomWeapon();
+            let NPCgun2 = randomWeapon();
+            let NPCgun3 = randomWeapon();
+            let newNPC  = new NPC();
+            newNPC.inventory.push(NPCgun1);
+            newNPC.inventory.push(NPCgun2);
+            newNPC.inventory.push(NPCgun3);
+            newNPC.equipWeapon(NPCgun1);
+
+            this.itemArray.push(newNPC);
+        }
+
+    }
 }
 
 class NPC{
@@ -972,11 +1184,11 @@ class Box extends Block{
         this.ypos = y;
         this.xvel = 0;
         this.yvel = 0;
-        this.width = 20;
-        this.height = 20;
+        this.width = 30;
+        this.height = 40;
         this.viewcolor = false;
         this.color = "#795548";
-        this.fName = name;
+        this.fName = "Barrel";
         this.lName = "";
         this.words = "";
         this.value = getRandomInt(10);
@@ -998,10 +1210,34 @@ class Box extends Block{
         }
     }
 
+    draw(){
+        let toDraw = images.barrel;
+        board.drawImage(toDraw,this.xpos + camera.xPos, this.ypos + camera.yPos, this.width, this.height);
+    }
+
     die(){
         this.alive = false;
         spawncoins(this.xpos,this.ypos,this.value);
     }
+}
+
+
+
+function loadImages(){
+    images.playerimg = new Image();
+    images.playerimg.src = 'media/player.png';
+
+    images.playerstep1 = new Image();
+    images.playerstep1.src = 'media/player2.png';
+
+    images.playerstep2 = new Image();
+    images.playerstep2.src = 'media/player3.png';
+
+    images.barrel = new Image();
+    images.barrel.src = 'media/barrel.png';
+
+    images.stonefloor = new Image();
+    images.stonefloor.src = 'media/stonefloor.jpg';
 }
 
 let itemDictionary = [
@@ -1148,12 +1384,41 @@ function getRandomInt(max){
   return Math.floor(Math.random() * Math.floor(max));
 }
 
+function getGrassColor(){
+    switch (getRandomInt(4.2)) {
+        case 0:
+            return "#689F38";
+            break;
+
+        case 1:
+            return "#9E9D24";
+            break;
+
+        case 2:
+            return "#43A047";
+            break;
+
+        case 3:
+            return "#7CB342";
+            break;
+
+        case 4:
+            return "#558B2F";
+            break;
+    }
+}
+
 function getRandomfloat(max){
     return Math.random() * max;
 }
 
 function coinFlip(){
     return Math.floor(Math.random() * Math.floor(2));
+}
+
+function playOdds(chance){
+    let result = Math.random();
+    return (chance) >= result;
 }
 
 function getMousePos(canvas, evt) {
@@ -1174,6 +1439,22 @@ function enterMap(currentMap,map) {
     drawArrayA = map.itemArray;
 }
 
+function generateNewMap(newX,newY,currentMap){
+    let newMap = new localMap(newX,newY);
+    if (playOdds(1/9)){
+        newMap = new wolfArea(newX,newY);
+    } else if (playOdds(1/9)){
+        newMap = new banditArea(newX,newY);
+    } else if (playOdds(3/3)){
+        newMap = new townArea(newX,newY);
+    }
+
+    let newCoordinates = newX + "," + newY;
+    newMap.generate();
+    enterMap(currentMap,newMap);
+    world[newCoordinates] = newMap;
+}
+
 function changeMaps(x,y){
     let newX = worldX + x;
     let newY = worldY + y;
@@ -1185,11 +1466,9 @@ function changeMaps(x,y){
     if (newMap){
         enterMap(currentMap,newMap);
     }else{
-        newMap = new localMap(newX,newY);
-        newMap.generate();
-        enterMap(currentMap,newMap);
-        world[newCoordinates] = newMap;
+        generateNewMap(newX,newY,currentMap);
     }
+
 
     if (newX === x) player.yPos = -player.yPos*0.9;
     if (newY === y) player.xPos = -player.xPos*0.9;
@@ -1199,6 +1478,7 @@ function changeMaps(x,y){
 }
 
 function initGame(){
+    loadImages();
     let currentMap = new localMap(0,0);
     currentMap.generate();
     drawArrayA = currentMap.itemArray;
@@ -1731,7 +2011,6 @@ function pointInObject(point,object) {
 
 function getCurrentMap(){
     let coordinates = worldX + "," + worldY;
-    console.log(coordinates);
     return world[coordinates];
 }
 
@@ -1761,7 +2040,7 @@ function movePlayer(){
 
     you.coolGuns();
 
-    if(isoutofBounds())console.log("true");
+    isoutofBounds();
 
     player.xPos += player.xVel;
     player.yPos += player.yVel;
@@ -2103,9 +2382,14 @@ function drawOverlay(){
 }
 
 function draw(drawArray){
+  let map = getCurrentMap();
   board.clearRect(0, 0, canvas.width, canvas.height);//clears board for a new frame
-  board.fillStyle = "#9CCC65";
+  board.fillStyle = map.backgroundColor;
   board.fillRect(0,0,canvas.width,canvas.height);
+
+
+  map.drawFloor();
+
 
   for(let i = 0; i < drawArray.length; i++){
       let object = drawArray[i];
@@ -2118,9 +2402,11 @@ function draw(drawArray){
           }
       }
 
-      board.fillRect(object.xpos + camera.xPos,object.ypos + camera.yPos,object.width,object.height);
-
-
+      if (typeof object.draw === 'function'){
+          object.draw();
+      }else {
+          board.fillRect(object.xpos + camera.xPos, object.ypos + camera.yPos, object.width, object.height);
+      }
       if (object.hasOwnProperty('hovered')){if (object.hovered > 0) {
       board.font = "16px VT323";
       board.fillStyle = "#2A2A2F";
@@ -2149,8 +2435,9 @@ function draw(drawArray){
     }
     board.fillText(messager.text,canvas.width/2,100);
   }
+  //board.fillRect(player.xPos + camera.xPos,player.yPos + camera.yPos,20,30);
 
-  board.fillRect(player.xPos + camera.xPos,player.yPos + camera.yPos,20,30);
+  you.draw();
   if(currentScreen)currentScreen.display();
   drawMenu();
   drawOverlay();
