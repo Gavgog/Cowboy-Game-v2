@@ -286,6 +286,57 @@ class shotgun extends gun{
     }
 }
 
+class rayGun extends gun{
+    constructor(name,damage,fireRate){
+        super(name,damage,fireRate);
+        this.name = this.createName();
+        this.type = "weapon";
+        this.style = "range";
+        this.damage = damage;
+        this.fireRate = fireRate;
+        this.coolDown = -1;
+        this.ray = null
+    }
+
+    attack(author,x,y,xdir,ydir){
+        if (this.ray){
+            this.ray = new Ray(author,xdir,ydir,this.damage);
+        }else{
+            this.ray = new Ray(author,xdir,ydir,this.damage);
+        }
+        drawArrayA.push(this.ray);
+    }
+
+    createName(){
+        let result = this.gunSize();
+        if (this.fireRate<0.5) result += " minigun";
+        else if (this.fireRate<1) result += " machine gun";
+        else if (this.fireRate < 3) result += " handgun";
+        else if (this.fireRate < 4) result += " revolver";
+        else if (this.fireRate < 5) result += " rifle";
+        else  result += " sniper";
+
+        return result.trim()
+    }
+
+    gunSize(){
+        let result = "";
+        if (this.damage < 2)  result += " airsoft";
+        else if (this.damage < 4)  result += " peashooter";
+        else if (this.damage < 8)  result += " small";
+        else if (this.damage < 16)  result += " medium";
+        else if (this.damage < 32)  result += " large";
+        else if (this.damage < 64)  result += " massive";
+        else if (this.damage < 128)  result += " 'The Beast'";
+        return result
+    }
+
+    getSpread(){
+        return 0;
+    }
+}
+
+
 class Bullet{
     constructor(author,xpos,ypos,xvel,yvel,damage){
         this.type = "bullet";
@@ -330,6 +381,131 @@ class Bullet{
         return this.life > 0
     }
 
+    draw(){
+        board.fillStyle = "#000";
+        board.fillRect(this.xpos + camera.xPos, this.ypos + camera.yPos, this.width, this.height);
+    }
+
+}
+
+class Laser extends Bullet{
+    constructor(author,xpos,ypos,xvel,yvel,damage){
+        super();
+        this.type = "bullet";
+        this.xpos = xpos;
+        this.ypos = ypos;
+        this.xvel = xvel;
+        this.yvel = yvel;
+        this.life = 10;
+        this.damage = damage;
+        this.width = 3;
+        this.height = 3;
+        this.color = "#000000";
+        this.fName = "bullet";
+        this.friction = 1;
+        this.author = author;
+    }
+
+    checkCollisions(){
+        for (let i = 0;i < drawArrayA.length;i++){
+            let block = drawArrayA[i];
+            if (block.type === "AI"){
+                if (collidesWith(this,block)){
+                    if (block === this.author)continue;
+                    block.hit(this.damage,this.author);
+                    this.life = 0;
+                }
+            }
+        }
+        if (this.author !== "player" &&collidesWithPlayer(this)){
+            hitPlayer(this.damage,this.xvel,this.yvel);
+            this.life = 0;
+        }
+    }
+
+    move(){
+        this.life -= framerate/1000;
+        this.xpos += this.xvel;
+        this.ypos += this.yvel;
+
+        this.checkCollisions();
+
+        return this.life > 0
+    }
+
+    draw(){
+        let power = 1 + (this.damage);
+
+/*
+        board.fillStyle = "#039BE5";
+        board.fillRect(this.xpos + camera.xPos, this.ypos + camera.yPos, this.width*power*this.xvel, this.height*power);
+
+        power = 1 + (this.damage / 3);
+        board.fillStyle = "#4FC3F7";
+        board.fillRect(this.xpos + camera.xPos, this.ypos + camera.yPos, this.width*power*this.xvel, this.height*power);
+*/
+
+        power = 1 + (this.damage / 10);
+        board.fillStyle = "#fff";
+        board.fillRect(this.xpos + camera.xPos, this.ypos + camera.yPos, this.width*power*(this.xvel+3), (this.height*power*this.yvel+3));
+    }
+}
+
+class Ray extends Bullet{
+    constructor(author,xvel,yvel,damage){
+        super();
+        this.type = "bullet";
+        this.xvel = xvel;
+        this.yvel = yvel;
+        this.life = 0.05;
+        this.damage = damage;
+        this.color = "#000000";
+        this.fName = "bullet";
+        this.friction = 1;
+        this.author = author;
+        this.range = 500;
+        this.width = (xvel*this.range)+3;
+        this.height = (yvel*this.range)+3;
+        if (this.author.xpos) this.xpos = this.author.xpos;
+        else this.xpos = player.xPos + 10;
+        if (this.author.ypos) this.ypos = this.author.ypos;
+        else this.ypos = player.yPos + 10;
+    }
+
+    checkCollisions(){
+        for (let i = 0;i < drawArrayA.length;i++){
+            let block = drawArrayA[i];
+            if (block.type === "AI"){
+                if (collidesWith(this,block)){
+                    if (block === this.author)continue;
+                    block.hit(this.damage,this.author);
+                    this.life = 0;
+                }
+            }
+        }
+        if (this.author !== "player" &&collidesWithPlayer(this)){
+            hitPlayer(this.damage,this.xvel,this.yvel);
+            this.life = 0;
+        }
+    }
+
+    move(){
+        this.life -= framerate/1000;
+        if (this.author.xpos) this.xpos = this.author.xpos;
+        else this.xpos = player.xPos + 10;
+        if (this.author.ypos) this.ypos = this.author.ypos;
+        else this.ypos = player.yPos + 10;
+        this.checkCollisions();
+        return this.life > 0;
+    }
+
+    draw(){
+        let x = this.xpos + camera.xPos;
+        let y = this.ypos + camera.yPos;
+
+        board.fillStyle = "#039BE5";
+        board.fillRect(x, y, this.width, this.height);
+    }
 }
 
 class backgroundObject{
@@ -337,7 +513,7 @@ class backgroundObject{
         this.xpos = getRandomInt(size*2)-size;
         this.ypos = getRandomInt(size*2)-size;
         this.color = getGrassColor();
-        this.width = (getRandomInt(2)*3)+6;
+        this.width = (getRandomInt(4)*3)+3;
         this.height = 3;
         this.special = playOdds(1/10);
 
@@ -377,6 +553,22 @@ class backgroundObject{
             }
 
         }
+    }
+}
+
+class mapBorder{
+    constructor(lr,tb,size,repX,repY) {
+        console.log(repX,repY);
+        this.xpos = lr*(size);
+        this.ypos = tb*(size);
+        this.color = "#9CCC65";
+        this.width = (size*2)+2;
+        this.height = (size*2)+2;
+    }
+
+    draw(){
+        board.fillStyle = this.color;
+        board.fillRect(this.xpos+camera.xPos,this.ypos+camera.yPos,this.width,this.height);
     }
 }
 
@@ -426,10 +618,87 @@ class localMap{
     }
 
     generateBG(){
-        for (let i = 0; i < this.size/10;i++){
+        for (let i = 0; i < this.size/5;i++){
             let item = new backgroundObject(this.size);
             this.backgroundArray.push(item);
         }
+    }
+
+}
+
+
+class waterArea{
+    constructor(xpos,ypos) {
+        this.itemArray = [];
+        this.xpos = xpos;
+        this.ypos = ypos;
+        this.backgroundColor = "#039BE5";
+        this.size = 1000;
+        this.complexity = 10;
+        this.backgroundArray = []
+    }
+
+    generate(){
+        this.generateBG();
+        for (let i = 0; i < gameComplexity; i ++){
+            let x = getRandomInt(this.size*2)-this.size;
+            let y = getRandomInt(this.size*2)-this.size;
+            let filler = new Box(x,y,'box');
+            this.itemArray.push(filler);
+        }
+
+        for (let i = 0; i < this.complexity/2; i ++){
+            let NPCgun = randomWeapon();
+            let newNPC  = new NPC();
+            newNPC.inventory.push(NPCgun);
+            newNPC.equipWeapon(NPCgun);
+
+            this.itemArray.push(newNPC);
+        }
+
+        for (let i = 0; i < gameComplexity/2; i ++){
+            let newNPC  = new Wolf();
+            this.itemArray.push(newNPC);
+        }
+    }
+
+    drawFloor(){
+
+        for (let i = 0; i < this.backgroundArray.length;i++){
+            let item = this.backgroundArray[i];
+            item.draw();
+        }
+
+    }
+
+    generateBG(){
+        for (let i = 0; i < this.size/5;i++){
+            let item = new backgroundObject(this.size);
+            this.backgroundArray.push(item);
+        }
+
+        let top = new mapBorder(-0.9,-2.7,this.size,worldX,worldY-1);
+        let bottom = new mapBorder(-0.9,0.9,this.size,worldX,worldY+1);
+        let right = new mapBorder(0.9,-0.9,this.size,worldX+1,worldY);
+        let left = new mapBorder(-2.7,-0.9,this.size,worldX-1,worldY);
+
+        this.backgroundArray.push(top);
+        this.backgroundArray.push(bottom);
+        this.backgroundArray.push(left);
+        this.backgroundArray.push(right);
+
+
+        let topL = new mapBorder(-2.7,-2.7,this.size,worldX-1,worldY-1);
+        let topR = new mapBorder(0.9,-2.7,this.size,worldX+1,worldY-1);
+        let bottomL = new mapBorder(-2.7,0.9,this.size,worldX-1,worldY-1);
+        let bottomR = new mapBorder(0.9,0.9,this.size,worldX+1,worldY-1);
+
+        this.backgroundArray.push(topL);
+        this.backgroundArray.push(topR);
+        this.backgroundArray.push(bottomL);
+        this.backgroundArray.push(bottomR);
+
+
 
     }
 
@@ -1441,12 +1710,13 @@ function enterMap(currentMap,map) {
 
 function generateNewMap(newX,newY,currentMap){
     let newMap = new localMap(newX,newY);
-    if (playOdds(1/9)){
+    if (playOdds(1/30)){
         newMap = new wolfArea(newX,newY);
-    } else if (playOdds(1/9)){
+    } else if (playOdds(1/30)){
         newMap = new banditArea(newX,newY);
-    } else if (playOdds(3/3)){
-        newMap = new townArea(newX,newY);
+    }
+    else if (playOdds(1/3)){
+        newMap = new waterArea(newX,newY);
     }
 
     let newCoordinates = newX + "," + newY;
@@ -1459,7 +1729,6 @@ function changeMaps(x,y){
     let newX = worldX + x;
     let newY = worldY + y;
     let newCoordinates = newX + "," + newY;
-
     let currentMap = getCurrentMap();
     let newMap = world[newCoordinates];
 
@@ -1469,12 +1738,25 @@ function changeMaps(x,y){
         generateNewMap(newX,newY,currentMap);
     }
 
-
-    if (newX === x) player.yPos = -player.yPos*0.9;
-    if (newY === y) player.xPos = -player.xPos*0.9;
-
+    if (newX === worldX){
+        if (player.yPos > 0)player.yPos = -player.yPos + 5;
+        else player.yPos = -player.yPos - 5;
+    }
+    if (newY === worldY){
+        if (player.xPos > 0)player.xPos = -player.xPos + 5;
+        else player.xPos = -player.xPos - 5;
+    }
     worldX = newX;
     worldY = newY;
+}
+
+
+function getColorFromCoords(x,y){
+    let coords = x + "," + y;
+    if (world[coords]){
+        return world[coords].backgroundColor;
+    } else return "#039BE5";
+
 }
 
 function initGame(){
@@ -1564,6 +1846,7 @@ function randomWeapon(){
     let slugs = getRandomInt(4)+3;
     let weapon = null;
     let randNum = getRandomInt(3);
+
     switch(randNum){
         case 0://shotgun
             weapon = new shotgun("Shotgun",damage,fireRate,slugs);
@@ -1672,8 +1955,8 @@ function playerMenu(){
     if (selected === "Skills"){
         closeMenu()
     }
-    if (selected === "Stats"){
-        closeMenu()
+    if (selected === "Map"){
+        openMap();
     }
 }
 
@@ -1723,6 +2006,10 @@ function chatMenu(){
     if (selected === "Back")openMenu('talk');
 }
 
+function openMap(){
+    closeMenu();
+    menuDetails.type = "Map"
+}
 
 function chat(NPC){
 
@@ -2015,7 +2302,6 @@ function getCurrentMap(){
 }
 
 
-
 function isoutofBounds(){
     let size = getCurrentMap().size;
     if (player.xPos < -size){
@@ -2114,8 +2400,43 @@ function closeMenu(){
     menuDetails.type = "";
 }
 
+function drawMap(){
+    board.fillStyle = "#F9A825";
+    board.fillRect(95, 95, canvas.width-190, canvas.height-190);
+    board.fillStyle = "#9E9E9E";
+    board.fillRect(100, 100, canvas.width-200, canvas.height-200);
+
+
+    board.fillStyle = "#000";
+    board.fillText("[q] exit" ,100,canvas.height-70);
+
+
+
+    let middlex = canvas.width/2;
+    let middley = canvas.height/2;
+    for (let place in world) {
+        if (world.hasOwnProperty(place)) {
+            let placeCo = place.split(",");
+
+            if(placeCo[0] == worldX && placeCo[1] == worldY){
+                board.fillStyle = "#000";
+                board.fillRect(middlex + (placeCo[0]*13)-3, middley + (placeCo[1]*13)-3, 16, 16);
+            }
+            board.fillStyle = world[place].backgroundColor;
+            board.fillRect(middlex + (placeCo[0]*13), middley + (placeCo[1]*13), 10, 10);
+        }
+    }
+}
+
 function drawMenu(){
     if (menuDetails.type === "") return;
+
+    if (menuDetails.type === "Map") {
+        drawMap();
+        return;
+    };
+
+
     /*
     if (menuDetails.type === "Inventory"){
         drawInv();
@@ -2137,7 +2458,7 @@ function drawMenu(){
     if (menuDetails.type === "playerMenu"){
         //display items
         board.font = "22px VT323";
-        menuDetails.items = [['Inventory'],['Skills'],['Stats'],['Close']];
+        menuDetails.items = [['Inventory'],['Skills'],['Map'],['Close']];
         menuHeight += 35* menuDetails.items.length;
     }
 
@@ -2187,7 +2508,6 @@ function drawMenu(){
     if (menuDetails.type === 'talk')displayCharDetails(innerHeight);
     if (menuDetails.type === 'chat')displayCharDetails(innerHeight);
 }
-
 
 function drawInv(){
     board.fillStyle = "#888888";
@@ -2286,6 +2606,7 @@ function notify(message){
 }
 
 function gameOver(){
+    closeMenu();
     player.dead = true;
 }
 
