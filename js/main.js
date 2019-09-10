@@ -119,7 +119,7 @@ function tree(xPos, yPos){
   this.ypos = yPos
 }
 
-let buildItems = [["Apple Tree",15],["Oak Tree",7],["Maple Tree",10],["Box",1],["Loot Box",10],["Treasure Tree",50]];
+let buildItems = [["Apple Tree",15],["Cactus",7],["Maple Tree",10],["Box",1],["Loot Box",10],["Treasure Tree",50]];
 let buildingNow = [];
 let menuDetails = {type:"",items:[],index:0};
 
@@ -591,6 +591,7 @@ class localMap{
             let filler = new Box(x,y,'box');
             this.itemArray.push(filler);
         }
+        
 
         for (let i = 0; i < this.complexity/2; i ++){
             let NPCgun = randomWeapon();
@@ -601,6 +602,12 @@ class localMap{
             this.itemArray.push(newNPC);
         }
 
+        for (let i = 0; i < gameComplexity/2; i ++){
+            let x = getRandomInt(this.size*2)-this.size;
+            let y = getRandomInt(this.size*2)-this.size;
+            let newTree = new Tree(x,y,"Cactus",5);
+            this.itemArray.push(newTree);
+        }
 
         for (let i = 0; i < gameComplexity/2; i ++){
             let newNPC  = new Wolf();
@@ -822,6 +829,73 @@ class townArea extends localMap{
             this.itemArray.push(newNPC);
         }
 
+    }
+}
+
+class Branch{
+    constructor(x,y,attachment){
+        this.xpos = x;
+        this.ypos = y;
+        this.topOpen = true;
+        this.leftOpen = true;
+        this.rightOpen = true;
+        this.attachment = attachment;
+        switch(attachment){
+            case(-2)://spread right only
+                this.topOpen = false;
+                this.rightOpen = false;
+                break;
+            case(-1)://T junction to the right
+                this.rightOpen = false;
+                break;
+            case(0)://attached vertically
+                this.leftOpen = false;
+                this.rightOpen = false;
+                break;
+            case(1)://T junction to the left
+                this.leftOpen = false;
+                break;
+            case(2)://spread left only
+                this.leftOpen = false;
+                this.topOpen = false;
+                break;
+            case(3)://dead end block
+                this.leftOpen = false;
+                this.rightOpen = false;
+                this.topOpen = false;
+                break;
+        }
+    }
+
+    grow(){
+        let result = [];
+        if (this.rightOpen){
+            this.rightOpen = false;
+            if (playOdds(2/4)) {//chance the branch stops there
+                result.push(new Branch(this.xpos + 3, this.ypos, 3));
+            }else result.push(new Branch(this.xpos+3,this.ypos,2));
+        }
+
+        if (this.leftOpen){
+            this.leftOpen = false;
+            if (playOdds(2/4)){//chance the branch stops there
+                result.push(new Branch(this.xpos-3,this.ypos,3));
+            }else result.push(new Branch(this.xpos-3,this.ypos,-2));
+        }
+
+        if (this.topOpen){
+            this.topOpen = false;
+            if (playOdds(1/3)){//amount of branches
+                if (coinFlip()){
+                    result.push(new Branch(this.xpos,this.ypos-3,1));
+                }else{
+                    result.push(new Branch(this.xpos,this.ypos-3,-1));
+                }
+            }else{
+                result.push(new Branch(this.xpos,this.ypos-3,0));
+            }
+        }
+        return result;
     }
 }
 
@@ -1287,8 +1361,8 @@ class FloatingItem {
     }
 
     floatTowardsPlayer(){
-        let xdiff = this.xpos - player.xPos;
-        let ydiff = this.ypos - player.yPos;
+        let xdiff = this.xpos - player.xPos - 10;
+        let ydiff = this.ypos - player.yPos - 20;
         let maxDraw = 80;
         let xSpeed = (maxDraw - Math.abs(xdiff))/40;
         let ySpeed = (maxDraw - Math.abs(ydiff))/40;
@@ -1302,9 +1376,9 @@ class FloatingItem {
     }
 
     checkCollected(i){
-        let xdiff = this.xpos - player.xPos;
-        let ydiff = this.ypos - player.yPos;
-        if(Math.abs(xdiff) < 10 && Math.abs(ydiff) < 10){
+        let xdiff = this.xpos - player.xPos - 10;
+        let ydiff = this.ypos - player.yPos - 20;
+        if(Math.abs(xdiff) < 15 && Math.abs(ydiff) < 25){
             you.addToInv(this.contains);
             drawArrayA.splice(i,1);
         }
@@ -1327,12 +1401,22 @@ class Coin extends FloatingItem{
     }
 
     checkCollected(i){
-        let xdiff = this.xpos - player.xPos;
-        let ydiff = this.ypos - player.yPos;
-        if(Math.abs(xdiff) < 10 && Math.abs(ydiff) < 10){
+        let xdiff = this.xpos - player.xPos - 10;
+        let ydiff = this.ypos - player.yPos - 20;
+        if(Math.abs(xdiff) < 15 && Math.abs(ydiff) < 25){
             playerInfo.coins += this.value;
             drawArrayA.splice(i,1);
         }
+    }
+
+    draw(){
+        board.fillStyle = "#FBC02D";
+        board.fillRect(this.xpos + camera.xPos + 1, this.ypos + camera.yPos, 6, 8);
+        board.fillRect(this.xpos + camera.xPos, this.ypos + camera.yPos + 1, 8, 6);
+        board.fillStyle = "#FDD835";
+        board.fillRect(this.xpos + camera.xPos + 1, this.ypos + camera.yPos + 1, 6, 6);
+        //board.fillRect(this.xpos + camera.xPos + 4, this.ypos + camera.yPos, 6, 14);
+        //board.fillRect(this.xpos + camera.xPos + 2, this.ypos + camera.yPos + 2, 10, 10);
     }
 }
 
@@ -1375,6 +1459,7 @@ class Tree extends Block{
     constructor(x,y,name,value){
         super(x,y,name);
         this.sType = "tree";
+        this.treeType = "cactus";
         this.xpos = x;
         this.ypos = y;
         this.xvel = 0;
@@ -1388,14 +1473,38 @@ class Tree extends Block{
         this.words = "";
         this.value = value;
         this.stage = 1;
-        this.life = timeNow;
+        this.life = getTime();
         this.health = 100;
         this.hovered = 0;
+        this.partArray = [new Branch(this.xpos,this.ypos,0)];
     };
 
     grow(){
-        if(timeNow - this.life > this.stage * 60) {
+        if(timeNow - this.life > (this.stage * this.stage)) {
             this.stage += 1;
+
+            switch(this.treeType) {
+                case("cactus"):
+                    let parts = this.partArray.length;
+                    for (let i = 0; i < parts; i ++) {
+                        let part = this.partArray[i];
+                        let branch;
+                        let branches = part.grow();
+                        for (branch of branches) {
+                            this.partArray.push(branch);
+                        }
+                    }
+
+                    break;
+                case("pine"):
+
+                    break;
+
+                case("oak"):
+
+                    break;
+
+            }
         }
     }
 
@@ -1408,6 +1517,22 @@ class Tree extends Block{
                 playerInfo.attackCoolDown = 2;
             }
         }
+    }
+
+    draw(){
+        board.fillStyle = "#795548";
+        if (this.treeType === "cactus") board.fillStyle = "#2E7D32";
+
+        for (let i = 0; i < this.partArray.length; i++){
+            let part = this.partArray[i];
+            board.fillRect(part.xpos + camera.xPos, part.ypos + camera.yPos, 3.5, 3.5);
+        }
+
+        // for (let height = 0; height < this.stage; height++){
+        //     if (height === this.stage -1)board.fillStyle = "#1B5E20";
+        //     board.fillRect(this.xpos + camera.xPos, this.ypos + camera.yPos - height*10, 10, 11);
+        // }
+
     }
 }
 
@@ -1510,10 +1635,10 @@ function loadImages(){
 }
 
 let itemDictionary = [
-    {name:"Apple Tree",   value:15, str:5,  sType:"tree", stage:0, life:0,  health:100},
-    {name:"Oak Tree",     value:7,  str:5,  sType:"tree", stage:0, life:0,  health:100},
-    {name:"Maple Tree",   value:10, str:5,  sType:"tree", stage:0, life:0,  health:100},
-    {name:"Treasure Tree",value:50, str:5,  sType:"tree", stage:0, life:0,  health:100},
+    {name:"Apple Tree",   value:15, str:5,  sType:"tree",treeType:"cactus", stage:0, life:0,  health:100},
+    {name:"Cactus",     value:7,  str:5,  sType:"tree", treeType:"cactus",stage:0, life:0,  health:100},
+    {name:"Maple Tree",   value:10, str:5,  sType:"tree",treeType:"cactus", stage:0, life:0,  health:100},
+    {name:"Treasure Tree",value:50, str:5,  sType:"tree",treeType:"cactus", stage:0, life:0,  health:100},
 
     {name:"Loot Box",     value:10, str:15, sType:"chest",  health:50},
     {name:"Box",          value:1,  str:1,  sType:"chest",  health:50}
@@ -1896,6 +2021,7 @@ function menu(){
     if (menuDetails.type === "Barter")if (keyboard.keyIsPressed(69))barterMenu();
     if (menuDetails.type === "talk")if (keyboard.keyIsPressed(69))talkMenu();
     if (menuDetails.type === "chat")if (keyboard.keyIsPressed(69))chatMenu();
+    if (menuDetails.type === "Build")if (keyboard.keyIsPressed(69))buildMenu();
 
 
     if (menuDetails.type !== ""){
@@ -1951,6 +2077,9 @@ function playerMenu(){
     }
     if (selected === "Inventory"){
         openMenu("Inventory")
+    }
+    if (selected === "Build"){
+        openMenu("Build")
     }
     if (selected === "Skills"){
         closeMenu()
@@ -2012,7 +2141,6 @@ function openMap(){
 }
 
 function chat(NPC){
-
     if (NPC.likes <= -50){
         notify('NPC dislikes you too much to talk');
         return
@@ -2064,6 +2192,11 @@ function getItemFromList(name){
       return itemDictionary[i];
     }
   }
+}
+
+
+function buildMenu(){
+    buildMode(menuDetails.index);
 }
 
 function buildMode(toBuild){
@@ -2458,7 +2591,7 @@ function drawMenu(){
     if (menuDetails.type === "playerMenu"){
         //display items
         board.font = "22px VT323";
-        menuDetails.items = [['Inventory'],['Skills'],['Map'],['Close']];
+        menuDetails.items = [['Inventory'],['Build'],['Skills'],['Map'],['Close']];
         menuHeight += 35* menuDetails.items.length;
     }
 
