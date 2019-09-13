@@ -16,7 +16,7 @@ let messager = {text:"", timer:0,urgent:true};
 
 let camera = {xPos:xDiff,yPos:yDiff,yVel:0,xVel:0};
 let player = {xPos:20,yPos:20,yVel:0,xVel:0,shoottimer:0,width:30,height:40};
-let playerInfo = {coins:100, attackCoolDown:0,attack:10,health:10,maxHealth:10,weapon:null};
+let playerInfo = {coins:100, attackCoolDown:0,attack:10,health:100,maxHealth:100,weapon:null};
 let currentScreen = null;
 let world = {};
 let worldX = 0;
@@ -210,6 +210,8 @@ class gun extends weapon{
         this.style = "range";
         this.damage = damage;
         this.fireRate = fireRate;
+
+        this.weight = Math.round(1+((getRandomInt(1) + 2) / (fireRate * 5)));
         this.coolDown = -1;
         this.bulletVelocity = 5;
         this.spread = Math.max(0.05,Math.min(0.2,1/fireRate));
@@ -223,8 +225,8 @@ class gun extends weapon{
             let bullet = new Bullet(author,x,y,xdir*this.bulletVelocity,ydir*this.bulletVelocity,this.damage);
             drawArrayA.push(bullet);
         }
-
     }
+
     createName(){
         let result = this.gunSize();
         if (this.fireRate<0.5) result += " minigun";
@@ -558,7 +560,6 @@ class backgroundObject{
 
 class mapBorder{
     constructor(lr,tb,size,repX,repY) {
-        console.log(repX,repY);
         this.xpos = lr*(size);
         this.ypos = tb*(size);
         this.color = "#9CCC65";
@@ -601,6 +602,9 @@ class localMap{
 
             this.itemArray.push(newNPC);
         }
+        let xs = getRandomInt(this.size*2)-this.size;
+        let ys = getRandomInt(this.size*2)-this.size;
+
 
         for (let i = 0; i < gameComplexity/2; i ++){
             let x = getRandomInt(this.size*2)-this.size;
@@ -829,6 +833,22 @@ class townArea extends localMap{
             this.itemArray.push(newNPC);
         }
 
+        if (coinFlip()){
+            let newx = getRandomInt(this.size*2)-this.size;
+            let newy = getRandomInt(this.size*2)-this.size;
+            if (coinFlip()) {
+                let coinStall = new GamblingStall(newx, newy, "jeffs goldrush", "coinToss");
+                this.itemArray.push(coinStall);
+            }else{
+                let rouletteStall = new GamblingStall(newx,newy,"idiots goldrush","russianRoulette");
+                this.itemArray.push(rouletteStall);
+            }
+            console.log("got monei?")
+        }
+
+
+
+
     }
 }
 
@@ -896,6 +916,129 @@ class Branch{
             }
         }
         return result;
+    }
+}
+
+class Text{
+    constructor(text,color,flashcolor,size,xpos,ypos){
+        this.text = text;
+        this.color = color;
+        this.flashing = flashcolor;
+        this.xpos = xpos;
+        this.ypos = ypos;
+        this.pos = "center";
+        this.font = size+"px VT323";
+        this.backgroundColor = null;
+    }
+
+    setPos(pos){
+        this.pos = pos
+    }
+
+    setSize(size){
+        this.font = size+"px VT323";
+    }
+
+    setBg(newColor){//not implimented yet
+        this.backgroundColor = newColor;
+    }
+
+    draw(){
+        board.font = this.font;
+        board.textAlign =  this.pos;
+
+        if (this.flashing) {
+            if (getTime() % 2 === 0) board.fillStyle = this.color;
+            else board.fillStyle = this.flashing;
+        }else{
+            board.fillStyle = this.color;
+        }
+
+        board.fillText(this.text, this.xpos, this.ypos);
+    }
+}
+
+
+class menuBoard{
+    constructor(width,height,title,text){
+        this.isOpen = false;
+        this.width = width;
+        this.height = height;
+        this.title = title;
+        this.text = text;
+
+        this.partArray = [];
+
+        let header = new Text(title,"#000",null,46,canvas.width/2,150);
+        this.partArray.push(header);
+
+        drawArrayA.push(this);
+
+    }
+
+    open(){
+        this.isOpen = !this.isOpen;
+        if (!this.isOpen){
+            this.alive = false;
+        }
+    }
+
+    checkExit(){
+        if (keyboard.keyIsPressed(81)){
+            console.log("closing");
+            this.open()
+        }
+    }
+
+    draw() {
+        if (this.isOpen) {
+            if (!menuDetails.bet) {
+                menuDetails.bet = Math.min(playerInfo.coins, 10);
+            }
+            menuDetails.bet = Math.min(playerInfo.coins, menuDetails.bet)
+            board.fillStyle = "#E91E63";
+            board.fillRect(95, 95, canvas.width - 190, canvas.height - 190);
+            board.fillStyle = "#212121";
+            board.fillRect(100, 100, canvas.width - 200, canvas.height - 200);
+
+
+            board.fillStyle = "#000";
+            board.fillText("[q] exit", 100, canvas.height - 70);
+
+
+            board.textAlign = "center";
+            let part;
+            for (part of this.partArray) {
+                part.draw();
+            }
+
+            board.fillStyle = "#000";
+
+            this.checkExit();
+            menuDetails.type = "a";
+        }
+    }
+}
+
+
+
+class RacingGame extends menuBoard{
+    constructor(title){
+        super();
+        this.isOpen = false;
+        this.title = title;
+        this.text = "Please insert 1 coin to play [e]";
+
+        this.partArray = [];
+
+        let header = new Text(this.title,"#fff",null,46,canvas.width/2,150);
+        this.partArray.push(header);
+
+        let mainText = new Text(this.text,"#E91E63","#EC407A",32,canvas.width/2,250);
+        mainText.setBg("#9C27B0");
+        this.partArray.push(mainText);
+
+        drawArrayA.push(this);
     }
 }
 
@@ -1455,6 +1598,95 @@ class Block {
     }
 }
 
+
+
+class Stall extends Block {
+    constructor(x,y,name){
+        super();
+        this.sType = "block";
+        this.xpos = x;
+        this.ypos = y;
+        this.width = 100;
+        this.height = 50;
+        this.color = "#0F0F0F";
+        this.fName = name;
+        this.lName = "";
+        this.words = "";
+        this.hovered = 0;
+    };
+    hit(){
+    }
+
+    draw(){
+        board.fillStyle = "#FFC107";
+        board.fillRect(this.xpos + camera.xPos, this.ypos + camera.yPos, this.width, this.height);
+    }
+
+    interact(){
+    }
+}
+
+class GamblingStall extends Stall {
+    constructor(x,y,name,gameType){
+        super();
+        this.sType = "block";
+        this.gambleType = gameType;
+        this.xpos = x;
+        this.ypos = y;
+        this.width = 20;
+        this.height = 20;
+        this.viewcolor = false;
+        this.color = "#0F0F0F";
+        this.fName = name;
+        this.lName = "coin toss";
+        this.words = "";
+        this.stage = 1;
+        this.life = timeNow;
+        this.health = 100;
+        this.hovered = 0;
+        this.alive = true;
+    };
+
+    interact(){
+        this.hovered = 1;
+        this.words = "[e] to play " + this.fName;
+        if (menuDetails.type === ""){
+            if(keyboard.keyIsPressed(69))openGamblingMenu(this);
+        }
+    }
+}
+
+
+class GamingStall extends Stall {
+    constructor(x,y,name,gameType){
+        super();
+        this.sType = "block";
+        this.gambleType = gameType;
+        this.xpos = x;
+        this.ypos = y;
+        this.width = 20;
+        this.height = 20;
+        this.viewcolor = false;
+        this.color = "#0F0F0F";
+        this.fName = name;
+        this.lName = "coin toss";
+        this.words = "";
+        this.stage = 1;
+        this.life = timeNow;
+        this.health = 100;
+        this.hovered = 0;
+        this.alive = true;
+    };
+
+    interact(){
+        this.hovered = 1;
+        this.words = "[e] to play " + this.fName;
+        if (menuDetails.type === ""){
+            if(keyboard.keyIsPressed(69))openGamblingMenu(this);
+        }
+    }
+}
+
 class Tree extends Block{
     constructor(x,y,name,value){
         super(x,y,name);
@@ -1474,15 +1706,17 @@ class Tree extends Block{
         this.value = value;
         this.stage = 1;
         this.life = getTime();
-        this.health = 100;
+        this.health = 15;
         this.hovered = 0;
         this.partArray = [new Branch(this.xpos,this.ypos,0)];
     };
 
     grow(){
-        if(timeNow - this.life > (this.stage * this.stage)) {
+        if(timeNow - this.life > (this.stage * this.stage)){
             this.stage += 1;
-
+            this.health += 5;
+            if(this.stage > 15)return;
+            this.health += 10;
             switch(this.treeType) {
                 case("cactus"):
                     let parts = this.partArray.length;
@@ -1614,8 +1848,6 @@ class Box extends Block{
         spawncoins(this.xpos,this.ypos,this.value);
     }
 }
-
-
 
 function loadImages(){
     images.playerimg = new Image();
@@ -1835,12 +2067,14 @@ function enterMap(currentMap,map) {
 
 function generateNewMap(newX,newY,currentMap){
     let newMap = new localMap(newX,newY);
-    if (playOdds(1/30)){
+    if (playOdds(1/6)){
+        newMap = new townArea(newX,newY);
+    } else if (playOdds(1/6)){
         newMap = new wolfArea(newX,newY);
-    } else if (playOdds(1/30)){
+    } else if (playOdds(1/6)){
         newMap = new banditArea(newX,newY);
     }
-    else if (playOdds(1/3)){
+    else if (playOdds(1/6)){
         newMap = new waterArea(newX,newY);
     }
 
@@ -2281,6 +2515,16 @@ function openMenu(toOpen){
     menuDetails.type = toOpen;
 }
 
+function openGamblingMenu(stall) {
+    if (stall.gambleType === "Racing"){
+        let menu = new RacingGame();
+        menu.open()
+    }else {
+        menuDetails.type = "Gamble";
+        menuDetails.gambleType = stall;
+    }
+}
+
 function interactionRangeNPC(thing,i){
     for (let x = 0; x < drawArrayA.length; x++){//check distance to other NPCs
         let NSc = drawArrayA[x];
@@ -2476,11 +2720,15 @@ function movePlayer(){
   }else if(player.yVel !== 0){
     player.yVel = 0;
   }
+  let weightspeed = 0;
+  if (you.equiped){
+      weightspeed = (1-(1/(you.equiped.weight)))*0.5;
+  }
+  if(keyboard.key[87])player.yVel -=0.5-weightspeed;//W
+  if(keyboard.key[65])player.xVel -=0.5-weightspeed;//A
+  if(keyboard.key[83])player.yVel +=0.5-weightspeed;//S
+  if(keyboard.key[68])player.xVel +=0.5-weightspeed;//D
 
-  if(keyboard.key[87])player.yVel -=0.5;//W
-  if(keyboard.key[65])player.xVel -=0.5;//A
-  if(keyboard.key[83])player.yVel +=0.5;//S
-  if(keyboard.key[68])player.xVel +=0.5;//D
 
   if (menuDetails.type === ""){
     if(keyboard.key[37])shoot(-1,0);//left
@@ -2534,14 +2782,20 @@ function closeMenu(){
 }
 
 function drawMap(){
-    board.fillStyle = "#F9A825";
-    board.fillRect(95, 95, canvas.width-190, canvas.height-190);
-    board.fillStyle = "#9E9E9E";
-    board.fillRect(100, 100, canvas.width-200, canvas.height-200);
+    board.fillStyle = "#EC407A";
+    board.fillRect(95, 95, canvas.width-190, canvas.height-240);
+
+
+    board.fillStyle = "#1f1f1f";
+    board.fillRect(100, 100, canvas.width-200, canvas.height-250);
+    board.fillStyle = "#212121";
+    for(let i = 100; i < canvas.height-150; i+= 14){
+        board.fillRect(100, i, canvas.width-200, 7);
+    }
 
 
     board.fillStyle = "#000";
-    board.fillText("[q] exit" ,100,canvas.height-70);
+    board.fillText("[q] exit" ,100,canvas.height-120);
 
 
 
@@ -2552,13 +2806,117 @@ function drawMap(){
             let placeCo = place.split(",");
 
             if(placeCo[0] == worldX && placeCo[1] == worldY){
-                board.fillStyle = "#000";
-                board.fillRect(middlex + (placeCo[0]*13)-3, middley + (placeCo[1]*13)-3, 16, 16);
+                board.fillStyle = "#EC407A";
+                board.fillRect(middlex + (placeCo[0]*13)-2, middley + (placeCo[1]*13)-2, 14, 14);
             }
             board.fillStyle = world[place].backgroundColor;
             board.fillRect(middlex + (placeCo[0]*13), middley + (placeCo[1]*13), 10, 10);
         }
     }
+}
+
+function drawGambleStall(){
+    if (!menuDetails.bet){
+        menuDetails.bet = Math.min(playerInfo.coins,10);
+    }
+    board.fillStyle = "#00BCD4";
+    board.fillRect(95, 95, canvas.width-190, canvas.height-240);
+    menuDetails.bet = Math.min(playerInfo.coins,menuDetails.bet)
+    board.fillStyle = "#1f1f1f";
+    board.fillRect(100, 100, canvas.width-200, canvas.height-250);
+    board.fillStyle = "#212121";
+    for(let i = 100; i < canvas.height-150; i+= 14){
+        board.fillRect(100, i, canvas.width-200, 7);
+    }
+
+
+    board.fillStyle = "#000";
+    board.fillText("[q] exit" ,100,canvas.height-120);
+    if (menuDetails.gambleType.gambleType !== "russianRoulette") {
+        board.fillStyle = "#BDBDBD";
+        board.fillText("Betting " + menuDetails.bet + " coins [Arrow Keys] to change bet", 110, canvas.height - 160);
+    }
+    board.fillStyle = "#EEEEEE";
+    let middlex = canvas.width/2;
+    board.font = "46px VT323";
+    board.textAlign = "center";
+    board.fillText(menuDetails.gambleType.fName ,middlex,150);
+    board.font = "38px VT323";
+    board.fillText(menuDetails.gambleType.lName ,middlex,190);
+
+    if (menuDetails.gambleType.gambleType === "coinToss"){
+
+    if (getTime() % 2 === 0) board.fillStyle = "#CE93D8";
+    else board.fillStyle = "#EEEEEE";
+        board.fillText("[e] To Flip Coin" ,middlex,250);
+    } else if (menuDetails.gambleType.gambleType === "russianRoulette"){
+
+        if (getTime() % 2 === 0) board.fillStyle = "#f44336";
+        else board.fillStyle = "#ef9a9a";
+        board.fillText("[e] To Pull Trigger" ,middlex,250);
+    }
+
+
+    board.fillStyle = "#EEEEEE";
+
+    if (keyboard.keyIsPressed(69)){
+        if(menuDetails.gambleType.gambleType === "coinToss"){
+            if (playerInfo.coins >= menuDetails.bet) {
+                if (coinFlip()) {
+                    menuDetails.text = "you win!";
+                    playerInfo.coins += menuDetails.bet;
+                } else {
+                    menuDetails.text = "you loose";
+                    playerInfo.coins -= menuDetails.bet;
+                }
+            }
+        }else if (menuDetails.gambleType.gambleType === "russianRoulette"){
+
+                if (playOdds(1/3)) {
+                    playerInfo.health = -1;
+                    hitPlayer(10,0,0);
+                } else {
+                    menuDetails.text = "You win!";
+                    playerInfo.coins += 6;
+                    playerInfo.coins *= 6;
+                }
+
+        }
+
+    }
+
+    if (keyboard.keyIsPressed(37)){
+        if (menuDetails.bet > 10) {
+            menuDetails.bet -= 10;
+        }else {
+            menuDetails.bet = 1;
+        }
+    }
+    if (keyboard.keyIsPressed(39)){
+        if (menuDetails.bet + 10 <= playerInfo.coins) {
+            menuDetails.bet += 10;
+        } else {
+            menuDetails.bet = playerInfo.coins;
+        }
+    }
+
+    if (keyboard.keyIsPressed(40)){
+        if (menuDetails.bet > 1) {
+            menuDetails.bet -= 1;
+        }
+    }
+    if (keyboard.keyIsPressed(38)){
+        if (menuDetails.bet + 1 <= playerInfo.coins) {
+            menuDetails.bet += 1;
+        }
+    }
+
+    if(menuDetails.text){
+        board.fillText(menuDetails.text,middlex,300);
+    }
+
+
+
 }
 
 function drawMenu(){
@@ -2567,15 +2925,13 @@ function drawMenu(){
     if (menuDetails.type === "Map") {
         drawMap();
         return;
-    };
+    }
 
-
-    /*
-    if (menuDetails.type === "Inventory"){
-        drawInv();
-        board.fillStyle = "#000000";
+    if (menuDetails.type === "Gamble") {
+        drawGambleStall();
         return;
-    }*/
+    }
+
     board.font = "22px VT323";
     let menuHeight = 5;
     let innerHeight = 5;
@@ -2619,6 +2975,7 @@ function drawMenu(){
 
         menuHeight += 35* menuDetails.items.length + 90;
         innerHeight += 35* menuDetails.items.length;
+
     }
 
     if (menuDetails.type === "Barter"){
@@ -2640,6 +2997,8 @@ function drawMenu(){
 
     if (menuDetails.type === 'talk')displayCharDetails(innerHeight);
     if (menuDetails.type === 'chat')displayCharDetails(innerHeight);
+    board.fillStyle = "#000";
+
 }
 
 function drawInv(){
@@ -2660,23 +3019,23 @@ function displayItems(){
     for (let i = 0; i < menuDetails.items.length; i++){
 
         if (menuDetails.index == i) {//if item is selected
-            board.fillStyle = "#FFE082";
+            board.fillStyle = "#80DEEA";
             board.fillRect(canvas.width - 207, 13 + 35 * i, 194, 34);
 
-            board.fillStyle = "#FFA000";
+            board.fillStyle = "#212121";
             board.fillRect(canvas.width - 205, 15 + 35 * i, 190, 30);
         }else{
             if (menuDetails.type === "Inventory") {
                 if(menuDetails.items[i].equiped){
-                    board.fillStyle = "#FFA000";
+                    board.fillStyle = "#EC407A";
                     board.fillRect(canvas.width - 207, 13 + 35 * i, 194, 34);
                 }
             }
-            board.fillStyle = "#BDBDBD";
+            board.fillStyle = "#212121";
             board.fillRect(canvas.width-205, 15+35*i, 190, 30);
         }
 
-        board.fillStyle = "#000000";
+        board.fillStyle = "#BDBDBD";
         if (menuDetails.type === "Inventory") printMenuItem(menuDetails.items[i].name,i);
         else if (menuDetails.type === "Barter") printMenuItem(menuDetails.items[i].name,i);
         else if (menuDetails.items[i][1] === undefined)printMenuItem(menuDetails.items[i][0],i);
@@ -2689,22 +3048,23 @@ function printMenuItem(text,i){
 }
 
 function displayItemStats(item){
-    board.fillStyle = "#424242";
-    board.fillRect(canvas.width-410, 10, 195, 158);
-    board.fillStyle = "#BDBDBD";
+    board.fillStyle = "#EC407A";
+    board.fillRect(canvas.width-410, 10, 195, 183);
+    board.fillStyle = "#212121";
     board.fillRect(canvas.width-406, 14, 187, 35);
-    board.fillRect(canvas.width-406, 53, 187, 80);
-    board.fillRect(canvas.width-406, 136, 187, 28);
+    board.fillRect(canvas.width-406, 53, 187, 105);
+    board.fillRect(canvas.width-406, 161, 187, 28);
 
-    board.fillStyle = "#000";
+    board.fillStyle = "#E0E0E0";
     board.textAlign = "center";
     board.fillText(item.name, canvas.width - 315, 36);
     board.textAlign = "left";
     board.fillText('Dmg: ' + item.damage, canvas.width - 400, 75);
     board.fillText('Spd: ' + Math.max(10-item.fireRate), canvas.width - 400, 100);
     board.fillText('Rounds: ' + item.rounds, canvas.width - 400, 125);
+    board.fillText('Weight: ' + item.weight, canvas.width - 400, 150);
     board.textAlign = "center";
-    board.fillText('Value: $'+item.value, canvas.width - 315, 156);
+    board.fillText('Value: $'+item.value, canvas.width - 315, 181);
     board.textAlign = "left";
 }
 
@@ -2802,15 +3162,14 @@ function drawOverlay(){
         gameOverScreen();
         return
     }
-    board.font = "20px VT323";
 
-    board.textAlign = "left";
-    board.fillText(playerInfo.coins + " coins",20,25);
 
-    let weapon = "Nothing";
-    if (you.equiped) weapon = you.equiped.name;
-    board.fillText(you.equiped.name,20,canvas.height-20);
+    board.fillStyle = "#424242";
+    board.fillRect(0,canvas.height-50,canvas.width,50);
 
+
+    drawMoney();
+    drawWeapon();
 
 
     if (player.duelTimer > 0){
@@ -2828,11 +3187,61 @@ function drawOverlay(){
         board.fillText(text, canvas.width/2, 96);
     }
 
+    drawHealthBar();
 
+}
+
+function drawMoney() {
+    let cells = playerInfo.coins.toString(10).length
+    console.log(cells);
+
+    board.fillStyle = "#212121";
+    board.fillRect(0,canvas.height-45,(2+cells)*28-11,40);
+    board.font = "38px PIXymbolsLCDW00-Regular";
+    board.fillStyle = "#558B2F";
     board.textAlign = "left";
-    let haelthPercentage = playerInfo.health/playerInfo.maxHealth;
-    board.fillStyle = "#FF2222";
-    board.fillRect(0,canvas.height-10,canvas.width*haelthPercentage,10);
+    board.fillText("$"+playerInfo.coins, 12, canvas.height - 11);
+}
+
+function drawWeapon(){
+    board.fillStyle = "#424242";
+    board.fillRect(0,canvas.height-83,243,33);
+
+    board.fillStyle = "#0d1f0f";
+    board.fillRect(0,canvas.height-80,240,30);
+
+    board.fillStyle = "#19521e";
+    let start = 5;
+    for (let i = 0; i < 30; i ++){
+        board.fillRect(start + (i*8),canvas.height-80,1,30);
+    }
+    for (let i = 0; i < 4; i ++){
+        board.fillRect(0,canvas.height-80 + (i*8),240,1);
+    }
+
+    board.fillStyle = "#fff";
+    board.font = "16px PIXymbolsLCDW00-Regular";
+    let weapon = "Nothing";
+    if (you.equiped) weapon = you.equiped.name;
+    board.fillText(you.equiped.name,12,canvas.height - 58);
+}
+
+
+function drawHealthBar(){
+    board.textAlign = "left";
+    let healthPercentage = playerInfo.health/playerInfo.maxHealth;
+
+    board.fillStyle = "#212121";
+    board.fillRect(canvas.width*0.66-5,canvas.height-45,(canvas.width)/3+10,40);
+
+    board.fillStyle = "#EC407A";
+    board.fillRect(canvas.width*0.66,canvas.height-40,(canvas.width*healthPercentage)/3,30);
+
+    board.fillStyle = "#212121";
+    let start = canvas.width*0.66-5;
+    for (let i = 0; i < 11; i ++){
+        board.fillRect(start + (i*25),canvas.height-45,5,40);
+    }
 }
 
 function draw(drawArray){

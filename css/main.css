@@ -13,11 +13,19 @@
    ========================================================================== */
 
    html {
-    color: #222;
+    color: #757575;
     font-size: 1em;
     line-height: 1.4;
 }
 
+body{
+    background-color: #EEEEEE;
+}
+
+#gameCanvas:focus{
+    outline:0;
+    box-shadow: 0 0 10px #1B5E20;
+}
 /*
  * Remove text-shadow in selection highlight:
  * https://twitter.com/miketaylr/status/12228805301
