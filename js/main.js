@@ -32,6 +32,10 @@ class Player{
         this.stepCount = 0;
     }
 
+    getCoins(amount){
+        playerInfo.coins += amount;
+    }
+
     getItem(item){
         /*  let exists = false;
             for (let i = 0; i < this.inventory.length;i++){
@@ -592,11 +596,16 @@ class localMap{
             let filler = new Box(x,y,'box');
             this.itemArray.push(filler);
         }
-        
+
+
+        //let forgerstall = new GamingStall(0, 0, "Tim's cannons", "Forger");
+        //this.itemArray.push(forgerstall);
+
+
 
         for (let i = 0; i < this.complexity/2; i ++){
             let NPCgun = randomWeapon();
-            let newNPC  = new NPC();
+            let newNPC  = new gunslinger();
             newNPC.inventory.push(NPCgun);
             newNPC.equipWeapon(NPCgun);
 
@@ -620,12 +629,10 @@ class localMap{
     }
 
     drawFloor(){
-
         for (let i = 0; i < this.backgroundArray.length;i++){
             let item = this.backgroundArray[i];
             item.draw();
         }
-
     }
 
     generateBG(){
@@ -708,11 +715,7 @@ class waterArea{
         this.backgroundArray.push(topR);
         this.backgroundArray.push(bottomL);
         this.backgroundArray.push(bottomR);
-
-
-
     }
-
 }
 
 class wolfArea extends localMap{
@@ -776,7 +779,7 @@ class banditArea extends localMap{
 
         for (let i = 0; i < this.complexity/3; i ++){
             let NPCgun = randomWeapon();
-            let newNPC  = new NPC();
+            let newNPC  = new gunslinger();
             newNPC.inventory.push(NPCgun);
             newNPC.equipWeapon(NPCgun);
             newNPC.makeHostile();
@@ -824,7 +827,7 @@ class townArea extends localMap{
             let NPCgun1 = randomWeapon();
             let NPCgun2 = randomWeapon();
             let NPCgun3 = randomWeapon();
-            let newNPC  = new NPC();
+            let newNPC  = new gunslinger();
             newNPC.inventory.push(NPCgun1);
             newNPC.inventory.push(NPCgun2);
             newNPC.inventory.push(NPCgun3);
@@ -843,7 +846,6 @@ class townArea extends localMap{
                 let rouletteStall = new GamblingStall(newx,newy,"idiots goldrush","russianRoulette");
                 this.itemArray.push(rouletteStall);
             }
-            console.log("got monei?")
         }
 
 
@@ -958,6 +960,84 @@ class Text{
     }
 }
 
+class menuShape{
+    constructor(color,xpos,ypos,width,height){
+        this.color = color;
+        this.xpos = xpos;
+        this.ypos = ypos;
+        this.width = width;
+        this.height = height;
+        this.flashing = null;
+
+        this.xdest1 = null;
+        this.xdest2 = null;
+        this.xtimer = null;
+        this.xdirection = -1;
+
+    }
+
+    makeFlashing(color){
+        this.flashing = color;
+    }
+
+    movex(place1,place2,speed){
+        this.xdest1 = place1;
+        this.xdest2 = place2;
+        this.xtimer = speed*0.2;
+    }
+
+    moveOnce(xdest,ydest,speed){
+        this.originX = this.xpos;
+        this.originY = this.ypos;
+
+        this.xdest3 = xdest;
+        this.ydest3 = ydest;
+
+        this.speed = speed;
+        this.outIn = 1;
+
+    }
+
+    draw(){
+
+        if (this.outIn){
+            if (Math.abs(this.xpos - this.xdest3) > 5){
+                this.xpos += this.speed * this.outIn;
+            }
+
+            if (Math.abs(this.ypos - this.ydest3) > 5){
+                this.ypos += this.speed * this.outIn;
+            }
+
+            if (Math.abs(this.ypos - this.ydest3) <= 5 && Math.abs(this.xpos - this.xdest3) <= 5){
+                if (this.outIn === -1) this.outIn = false;
+                else{
+                    this.outIn = -1;
+                    this.xdest3 = this.originX;
+                    this.ydest3 = this.originY;
+                }
+            }
+
+        }else{
+            if(this.xtimer){
+                this.xpos += this.xtimer * this.xdirection;
+
+                if (this.xdirection === -1 && this.xpos <= this.xdest1) this.xdirection *= -1;
+                else if (this.xpos >= this.xdest2) this.xdirection *= -1;
+            }
+
+        }
+
+        if (this.flashing && getTime() % 2 === 0) {
+            board.fillStyle = this.flashing;
+        }else{
+            board.fillStyle = this.color;
+        }
+
+        board.fillRect(this.xpos, this.ypos,this.width,this.height);
+    }
+}
+
 
 class menuBoard{
     constructor(width,height,title,text){
@@ -985,21 +1065,29 @@ class menuBoard{
 
     checkExit(){
         if (keyboard.keyIsPressed(81)){
-            console.log("closing");
             this.open()
+            player.height = 40;
         }
+    }
+
+    play(){
+
     }
 
     draw() {
         if (this.isOpen) {
+
+            this.play();
+
+            player.height = 0;
             if (!menuDetails.bet) {
                 menuDetails.bet = Math.min(playerInfo.coins, 10);
             }
             menuDetails.bet = Math.min(playerInfo.coins, menuDetails.bet)
             board.fillStyle = "#E91E63";
-            board.fillRect(95, 95, canvas.width - 190, canvas.height - 190);
+            board.fillRect(95, 95, canvas.width - 190, canvas.height - 240);
             board.fillStyle = "#212121";
-            board.fillRect(100, 100, canvas.width - 200, canvas.height - 200);
+            board.fillRect(100, 100, canvas.width - 200, canvas.height - 250);
 
 
             board.fillStyle = "#000";
@@ -1020,13 +1108,102 @@ class menuBoard{
     }
 }
 
+class LCDBar extends menuShape{
+    constructor(width,height,x,y){
+        super()
+        this.color = "#fff";
+        this.xpos = x;
+        this.ypos = y;
+        this.width = width;
+        this.height = height;
+        this.flashing = null;
+        this.progress = 0;
+    }
+
+    setProgress(progress){
+        this.progress = progress;
+    }
+
+    draw(){
+        board.fillStyle = "#424242";
+        board.fillRect(this.xpos-5,this.ypos-45,this.width+10,this.height);
+
+        board.fillStyle = "#4FC3F7";
+        board.fillRect(this.xpos,this.ypos-40,((this.width-5)*this.progress),this.height-10);
+
+        board.fillStyle = "#424242";
+        let start = this.xpos-5;
+        for (let i = 0; i < 11; i ++){
+            board.fillRect(start + (i*25),this.ypos-45,5,40);
+        }
+    }
+}
 
 
-class RacingGame extends menuBoard{
-    constructor(title){
+class ForgerGame extends menuBoard{
+    constructor(){
         super();
         this.isOpen = false;
-        this.title = title;
+        this.title = "Forging";
+        this.text = "[e] to make gun";
+        this.completion = 0;
+
+        this.partArray = [];
+
+        let header = new Text(this.title,"#fff",null,46,canvas.width/2,150);
+        this.partArray.push(header);
+
+        let mainText = new Text(this.text,"#E91E63","#EC407A",32,canvas.width/2,190);
+        this.partArray.push(mainText);
+
+        let completionLabel = new Text("completion: ","#e1e1e1",null,32,canvas.width/2-150,canvas.height-175);
+        this.partArray.push(completionLabel);
+
+        this.progressBar = new LCDBar(250,40, canvas.width/2-75,canvas.height-160);
+        this.partArray.push(this.progressBar);
+
+        let workGun = new menuShape("#BDBDBD",canvas.width/2-15,canvas.height-225,30,10);
+        this.partArray.push(workGun);
+
+        this.workHammer = new menuShape("#757575",canvas.width/2-15,canvas.height-355,30,30);
+        this.workHammer.movex(canvas.width/2-165,canvas.width/2+135,8);
+        this.partArray.push(this.workHammer);
+
+        this.maxDistance = 30;
+
+        drawArrayA.push(this);
+    }
+
+    completeGun(){
+        you.getCoins(getRandomInt(20)+30)
+    }
+
+    play(){
+        if (keyboard.keyIsPressed(69)){
+
+            this.workHammer.moveOnce(this.workHammer.xpos,canvas.height-245,10);
+            this.workHammer.originY = canvas.height-355;
+
+            let difference = Math.abs(this.workHammer.xpos - canvas.width/2 + 15);
+
+            this.completion += Math.max(this.maxDistance - difference,0)/5;
+            console.log(Math.max(this.maxDistance - difference,0));
+
+            this.progressBar.setProgress(this.completion/100);
+            if (this.completion > 100){
+                this.completion = 0;
+                this.completeGun()
+            }
+        }
+    }
+
+}
+
+class RacingGame extends menuBoard{
+    constructor(){
+        super();
+        this.isOpen = false;
+        this.title = "Racing";
         this.text = "Please insert 1 coin to play [e]";
 
         this.partArray = [];
@@ -1072,6 +1249,7 @@ class NPC{
         this.health = 20+getRandomInt(20);
         this.weapon = null;
         this.inventory = [];
+        this.step = 0;
     }
 
 
@@ -1367,7 +1545,6 @@ class NPC{
         this.weapon.attack(this,this.xpos,this.ypos,xdir,ydir);
     }
 
-
     setTarget(x,y){
         this.xdest = x;
         this.ydest = y;
@@ -1378,25 +1555,40 @@ class NPC{
         if (Math.abs(this.xdest - this.xpos) > 1) this.xvel = this.speed *((this.xdest - this.xpos) / Math.abs(this.xdest - this.xpos));
 
         if (Math.abs(this.ydest - this.ypos) < 1) this.ypos = this.ydest;
+        else this.step += 0.1;
         if (Math.abs(this.xdest - this.xpos) < 1) this.xpos = this.xdest;
+        else this.step += 0.1;
+
+        if (this.step > 5){
+            this.step = 0.1;
+        }
     }
 
     roam(){
         this.color = "#b20f5c";
         this.speed = 1;
+        let xmoved = false;
+        let ymoved = false;
+
         if (this.ywait < 0 && Math.abs(this.ydest - this.ypos) < 1) this.ywait = getRandomInt(50); //create random wait time
         if (this.ywait >= 0 && (Math.abs(this.ydest - this.ypos) < 1)){//if standing
+            xmoved = true;
             this.ywait -= framerate/1000;//wait
             if (this.ywait < 0) this.ydest = getRandomInt(mapbounds*2)-mapbounds;//if wait time is up get new destination
         }
 
         if (this.xwait < 0 && Math.abs(this.xdest - this.xpos) < 1) this.xwait = getRandomInt(50); //create random wait time
         if (this.xwait >= 0 && (Math.abs(this.xdest - this.xpos) < 1)){//if standing
+            ymoved = true;
             this.xwait -= framerate/1000;//wait
             if (this.xwait < 0) this.xdest = getRandomInt(mapbounds*2)-mapbounds;//if wait time is up get new destination
         }
 
+        if (xmoved && ymoved)this.step = 0;
+
+
         if (this.holt === true){
+            this.step = 0;
             if (isInInteractionRange(this.xpos,this.ypos) === false){
                 this.holt = false;
                 this.sayBye();
@@ -1428,6 +1620,54 @@ class NPC{
         if (this.attacked % 3 === 0)  this.yvel += this.attacked/8.5;
         this.ypos -= this.attacked;
         if (this.health < 0)this.die();
+    }
+}
+
+class gunslinger extends NPC{
+    constructor(){
+        super();
+        let gender = "M";
+        if (getRandomInt(1) == 1) gender = "F";
+        this.type = "AI";
+        this.xpos = getRandomInt(mapbounds*2)-mapbounds;
+        this.ypos = getRandomInt(mapbounds*2)-mapbounds;
+        this.xvel = 0;
+        this.yvel = 0;
+        this.speed = 1;
+        this.xdest = getRandomInt(mapbounds*2)-mapbounds;
+        this.ydest = getRandomInt(mapbounds*2)-mapbounds;
+        this.xwait = getRandomInt(50);
+        this.ywait = getRandomInt(50);
+        this.width = 28;
+        this.height = 37;
+        this.gender = gender;
+        this.color = "#b20f5c";
+        this.fName = generateName();
+        this.lName = generateName();
+        this.hovered = 0;
+        this.likes = 0;
+        this.fear = 0;
+        this.money = getRandomInt(100);
+        this.talkQueue = [];
+        this.introduced = false;
+        this.hostileTo = [];
+        this.health = 20+getRandomInt(20);
+        this.weapon = null;
+        this.inventory = [];
+        this.step = 0;
+    }
+
+    draw(){
+        let toDraw = images.npc;
+
+        if (this.step > 0){
+            if (this.step > 2.5){
+                toDraw = images.npcstep1;
+            }else{
+                toDraw = images.npcstep2;
+            }
+        }
+        board.drawImage(toDraw,this.xpos + camera.xPos, this.ypos + camera.yPos, this.width, this.height);
     }
 }
 
@@ -1613,6 +1853,7 @@ class Stall extends Block {
         this.lName = "";
         this.words = "";
         this.hovered = 0;
+        drawArrayA.push(this);
     };
     hit(){
     }
@@ -1645,6 +1886,7 @@ class GamblingStall extends Stall {
         this.health = 100;
         this.hovered = 0;
         this.alive = true;
+        drawArrayA.push(this);
     };
 
     interact(){
@@ -1676,13 +1918,14 @@ class GamingStall extends Stall {
         this.health = 100;
         this.hovered = 0;
         this.alive = true;
+        drawArrayA.push(this);
     };
 
     interact(){
         this.hovered = 1;
         this.words = "[e] to play " + this.fName;
         if (menuDetails.type === ""){
-            if(keyboard.keyIsPressed(69))openGamblingMenu(this);
+            if(keyboard.keyIsPressed(69))openJobMenu(this);
         }
     }
 }
@@ -1859,11 +2102,18 @@ function loadImages(){
     images.playerstep2 = new Image();
     images.playerstep2.src = 'media/player3.png';
 
+    images.npc = new Image();
+    images.npc.src = 'media/npc.png';
+
+    images.npcstep1 = new Image();
+    images.npcstep1.src = 'media/npc1.png';
+
+    images.npcstep2 = new Image();
+    images.npcstep2.src = 'media/npc2.png';
+
     images.barrel = new Image();
     images.barrel.src = 'media/barrel.png';
 
-    images.stonefloor = new Image();
-    images.stonefloor.src = 'media/stonefloor.jpg';
 }
 
 let itemDictionary = [
@@ -2249,6 +2499,7 @@ function menu(){
         closeMenu();
     }
 
+    if (keyboard.keyIsPressed(77))openMap();
 
     if (menuDetails.type === "playerMenu")if (keyboard.keyIsPressed(69))playerMenu();
     if (menuDetails.type === "Inventory")if (keyboard.keyIsPressed(69))inventory();
@@ -2370,7 +2621,10 @@ function chatMenu(){
 }
 
 function openMap(){
-    closeMenu();
+    if(menuDetails.type === "Map"){
+        closeMenu();
+        return
+    }
     menuDetails.type = "Map"
 }
 
@@ -2522,6 +2776,16 @@ function openGamblingMenu(stall) {
     }else {
         menuDetails.type = "Gamble";
         menuDetails.gambleType = stall;
+    }
+}
+
+function openJobMenu(stall) {
+    if (stall.gambleType === "Forger"){
+        let menu = new ForgerGame();
+        menu.open()
+    }else {
+        //menuDetails.type = "Gamble";
+        //menuDetails.gambleType = stall;
     }
 }
 
@@ -3193,7 +3457,6 @@ function drawOverlay(){
 
 function drawMoney() {
     let cells = playerInfo.coins.toString(10).length
-    console.log(cells);
 
     board.fillStyle = "#212121";
     board.fillRect(0,canvas.height-45,(2+cells)*28-11,40);
